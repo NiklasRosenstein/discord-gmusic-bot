@@ -5,6 +5,10 @@ A Discord bot that plays music via Google Play Music.
 __To do__
 
 * Implement playlist/queue, searching for a title, etc.
+* Stream audio from GMusic instead of caching files into the `song_cache/` directory?
+  Streaming the HTTPResponse into `create_ffmpeg_player()` (using a `os.pipe()`)
+  gives an ffmpeg warning `[mp3 @ 0000000000d62340] invalid concatenated file detected - using bitrate for duration`,
+  probably because the file size can not be determined.
 * `client.delete_message()` does not work with the `ctx.message` in a
   Discord command when using the `discord.ext.commands.Bot`, it does however
   when using an `on_message()` listener.
