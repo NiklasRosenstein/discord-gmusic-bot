@@ -23,9 +23,9 @@ Send `help` to get a list of available commands.
 
 ![](https://i.imgur.com/1HFDCmY.png)
 
-### Installation & Deployment
+### Requirements
 
-__1. Discord Permissions__ (`3148800`)
+__Discord Permissions__ (`3148800`)
 
 * Text : Read Messages
 * Text : Send Messages
@@ -33,26 +33,20 @@ __1. Discord Permissions__ (`3148800`)
 * Voice : Connect
 * Voice : Speak
 
-__2. Installing the Opus Codec__
+__Software/Libraries__
 
-Follow the [Installing libopus] instructions. On Windows, Discord.py comes
-with a version of `libopus-0.x86.dll` and `libopus-0.x64.dll`, so you only
-need to use the right name depending on your Python version in `config.py`.
+* CPython 3
+* ffmpeg
+* libopus
 
-Alternatively, you can download a Windows opus build from the [Opus download]
-page for Windows x86 or from the [craftr-libopus] repository for Windows x64.
-
-  [craftr-libopus]: https://github.com/NiklasRosenstein/craftr-libopus/releases
-  [Installing libopus]: https://github.com/meew0/discordrb/wiki/Installing-libopus
-  [Opus download]: http://opus-codec.org/downloads/
-
-__3. Create an App-specific password for your Google Account__
+__Google Music Account + App-specific password__
 
 This can be done under https://myaccount.google.com/apppasswords and is
 necessary for accounts secured by two-factor authentication, yet still
 recommended in general.
 
-__4. Getting up and running__
+
+### Installation
 
     $ pip3 install nodepy-runtime
     $ nodepy https://nodepy.org/install-pm.py
@@ -67,6 +61,28 @@ You should see a URL that allows you to add the bot to your server printed
 in the console. Press CTRL+C to stop the bot. *Note: The discord API or the
 asyncio module in Python seem to have a long delay from you pressing CTRL+C
 and raising a KeyboardInterrupt exception.*
+
+
+### Installation (Windows Appendix)
+
+__libopus__
+
+On Windows, Discord.py comes with a version of `libopus-0.x86.dll` and
+`libopus-0.x64.dll`, so you only need to use the right name depending on your
+Python version in `config.py`.
+
+Alternatively, you can download a Windows opus build from the [Opus download]
+page for Windows x86 or from the [craftr-libopus] repository for Windows x64.
+
+  [craftr-libopus]: https://github.com/NiklasRosenstein/craftr-libopus/releases
+  [Installing libopus]: https://github.com/meew0/discordrb/wiki/Installing-libopus
+  [Opus download]: http://opus-codec.org/downloads/
+
+__ffmpeg__
+
+FFmpeg must be in your `PATH` in order to stream music to the Discord bot.
+Windows builds can be found [here](https://www.ffmpeg.org/download.html).
+
 
 ### Useful Tools
 
