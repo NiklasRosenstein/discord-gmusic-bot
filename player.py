@@ -2,6 +2,7 @@
 import asyncio
 import collections
 import discord
+import gmusicapi
 import logging
 import os
 import urllib.request
@@ -20,6 +21,9 @@ class Song:
     self.timestamp = timestamp
     self.message = message
     self.stream = stream
+
+  def __repr__(self):
+    return '<Song title={!r} user={!r}>'.format(self.data['title'], self.user.name)
 
   def create_embed(self):
     if self.stream and self.stream.is_playing():
@@ -135,11 +139,18 @@ class Player:
         await self.__update_current_song_message()
 
   async def resume(self):
+    next_song = None
     with await self.lock:
+      self.process_queue = True
       if self.current_song and self.current_song.stream:
-        self.process_queue = True
         self.current_song.stream.resume()
         await self.__update_current_song_message()
+      else:
+        next_song = self.current_song
+        if not next_song and self.queue:
+          next_song = self.queue.pop(0)
+    if next_song:
+      await self.__play_song(song)
 
   async def stop(self):
     with await self.lock:
@@ -167,6 +178,7 @@ class Player:
       )
 
   async def __kill_stream(self):
+    next_song = None
     with await self.lock:
       if self.current_song and self.current_song.stream:
         self.current_song.stream.stop()
@@ -175,6 +187,10 @@ class Player:
       except Exception as e:
         logging.exception(e)
       self.current_song = None
+      if self.process_queue and self.queue:
+        next_song = self.queue.pop(0)
+    if next_song:
+      await self.__play_song(next_song)
 
   async def __play_song(self, song):
     if await self.is_playing():
@@ -190,12 +206,29 @@ class Player:
     os.makedirs(config.song_cache_dir, exist_ok=True)
     filename = os.path.join(config.song_cache_dir, song_id + '.mp3')
     if not os.path.isfile(filename):
-      url = self.gmusic.get_stream_url(song_id)
+      error = None
+      response = None
+
       try:
-        response = urllib.request.urlopen(url)
-      except (urllib.error.URLError, urllib.error.HTTPError) as e:
+        url = self.gmusic.get_stream_url(song_id)
+      except gmusicapi.exceptions.CallFailure as e:
+        error = e
         logging.error(e)
-        return
+      else:
+        try:
+          response = urllib.request.urlopen(url)
+        except (urllib.error.URLError, urllib.error.HTTPError) as e:
+          error = e
+          logging.error(e)
+
+      if not response:
+        self.current_song = None
+        msg = '{} Something went wrong playing your track **{} - {}**, sorry.'
+        msg = msg.format(song.user.mention, song.data['title'], song.data['artist'])
+        await self.client.delete_message(song.message)
+        await self.client.say(msg)
+        return False
+
       with open(filename, 'wb') as fp:
         shutil.copyfileobj(response, fp)
 
@@ -208,12 +241,10 @@ class Player:
       song = Song(song_data, user, timestamp)
       if self.current_song:
         self.queue.append(song)
-        play_immediately = False
-      else:
-        play_immediately = True
-    if play_immediately:
-      logging.info('Immediately playing')
-      return await self.__play_song(song)
+        return 'queued'
+    if not await self.__play_song(song):
+      return 'error'
+    return 'playback'
 
 
 module.exports = Player

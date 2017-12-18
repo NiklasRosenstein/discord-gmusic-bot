@@ -20,7 +20,7 @@ import Reloader from './reloader'
 
 logger = logging.getLogger('discord-gmusic-bot')
 client = discord.ext.commands.Bot(None, description='Discord GMusic Bot')
-gmusic = gmusicapi.Mobileclient()
+gmusic = gmusicapi.Mobileclient(debug_logging=False)
 reloader = Reloader()
 
 
@@ -49,7 +49,6 @@ async def help(ctx):
   name = ctx.message.channel.server.me.nick or client.user.name
   icon_url = ctx.message.channel.server.me.avatar_url or client.user.avatar_url
   embed = discord.Embed()
-  embed.set_author(name=name, icon_url=icon_url)
   embed.add_field(
     name='help',
     value='Show this message.',
@@ -99,37 +98,44 @@ async def help(ctx):
   await client.say(embed=embed)
 
 
-@client.command(pass_context=True)
-async def queue(ctx, *query: str):
-  query = ' '.join(query).strip()
-  client.say('You sent me: {}'.format(repr(query)))
-  user = ctx.message.author
-  await client.type()
+async def do_queue(ctx, query=None, play_query=None):
+  if not query and not play_query:
+    query = ctx.message.content.lstrip('queue').strip()
+  elif not query:
+    query = play_query
 
-  if (not query or query == 'show'):
+  user = ctx.message.author
+  if not query:
     player = await Player.get_for_server(user.server)
-    embed = discord.Embed(title='GMusic Queue')
+    embed = discord.Embed()
     for song in (player.queue if player else []):
       embed.add_field(
-        name='{} - {}'.format(song.data['track'], song.data['arist']),
+        name='{} - {}'.format(song.data['title'], song.data['artist']),
         value='added by {}'.format(song.user.mention),
         inline=False
       )
-    client.say(embed)
+    await client.say(embed=embed)
     return
 
   player = await get_player_for_context(ctx)
   if not player:
     return
 
-  results = gmusic.search(query, max_results=1)
+  results = gmusic.search(query, max_results=10)
   if not results['song_hits']:
-    client.say('{} No hits.'.format(user.mention))
+    await client.say('{} Sorry, seems like Google Music sucks.'.format(user.mention))
     return
 
   # TODO: Put song on queue instead of playing immediately.
   song = results['song_hits'][0]['track']
-  await player.queue_song(song, user, ctx.message.timestamp)
+  result = await player.queue_song(song, user, ctx.message.timestamp)
+  if result == 'queued' and play_query:
+    await client.say('{} I\'ve added *{} - {}* to the queue.'.format(user.mention, song['title'], song['artist']))
+
+
+@client.command(pass_context=True)
+async def queue(ctx):
+  await do_queue(ctx)
 
 
 @client.command(pass_context=True)
@@ -140,7 +146,6 @@ async def search(ctx, *query: str):
   query = ' '.join(query)
   results = gmusic.search(query, max_results=10)
   embed = discord.Embed(title='Results for {}'.format(query))
-  embed.set_author(name=user.name, icon_url=user.avatar_url)
   for song in results['song_hits']:
     song = song['track']
     embed.add_field(
@@ -152,13 +157,14 @@ async def search(ctx, *query: str):
 
 
 @client.command(pass_context=True)
-async def play(ctx, *query: str):
+async def play(ctx):
   player = await get_player_for_context(ctx)
   if not player:
     return
 
+  query = ctx.message.content.lstrip('play').strip()
   if query:
-    await queue.callback(ctx, *query)
+    await do_queue(ctx, play_query=query)
     return
 
   user = ctx.message.author
