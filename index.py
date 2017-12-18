@@ -42,6 +42,38 @@ def make_read_pipe(src):
     os.close(pw)
 
 
+def create_song_embed(author, song, timestamp=None, state='playing'):
+  lines = []
+  lines.append('**Title** — {}'.format(song['title']))
+  lines.append('**Artist** — {}'.format(song['artist']))
+  lines.append('**Album** — {}'.format(song['album']))
+  lines.append('**Genre** — {}'.format(song['genre']))
+  embed = discord.Embed(
+    timestamp=timestamp,
+    description='\n'.join(lines),
+    colour=discord.Colour.dark_teal(),
+    url='https://google.com' # TODO: URL to play/queue the song again
+  )
+  embed.set_author(name=author.name, icon_url=author.avatar_url)
+  for ref in song['albumArtRef']:
+    if 'url' in ref:
+      embed.set_image(url=ref['url'])
+      break
+  if state == 'playing':
+    embed.add_field(
+      name='Controls',
+      value='[⏸](https://github.com) [⏹️](https://discordapp.com)',
+      inline=False
+    )
+  elif state == 'paused':
+    embed.add_field(
+      name='Controls',
+      value='[▶️](https://google.com) [⏹️](https://discordapp.com)',
+      inline=False
+    )
+  return embed
+
+
 async def play_song(player, song_id):
   # TODO: We should be able to stream the file directly from the URL to
   #       the create_ffmpeg_player() method, but it'll give an mp3 warning
@@ -80,37 +112,54 @@ async def on_message(message):
 
   user = message.author
   args = re.split('\s+', message.content, 2)[1:]
-  print(args)
+
   if len(args) == 0:
     await client.send_message(message.channel, "TODO: Show general information about gmusic bot.")
     return
-  elif args[0] in ('play', 'pause', 'resume', 'stop'):
+
+  if args[0] in ('play', 'pause', 'resume', 'stop'):
+    await client.delete_message(message)
     if not user.voice.voice_channel:
-      await client.add_reaction(message, '🤦')
-      await client.send_message(message.channel, "Join a Voice Channel before playing.")
+      await client.send_message(message.channel, "{} Join a Voice Channel before playing.".format(user.mention))
       return
     player = await Player.get_for_channel(client, user.voice.voice_channel)
+    is_playing = await player.is_playing()
     if args[0] == 'play':
-      if await player.is_playing():
-        # TODO: Discord doesn't recogise the warning emoji ..
-        #await client.add_reaction(message, '⚠️')
-        await client.send_message(message.channel, "reaction: :warning:")
-        return
-      # TODO: Parse additional arguments to search for songs.
-      await client.add_reaction(message, '👍')
-      song = random.choice(gmusic.get_promoted_songs())
-      await client.send_message(message.channel, 'Playing: {} by {}'.format(song['title'], song['artist']))
-      await play_song(player, song['storeId'])
-    elif args[0] == 'pause':
+      await client.send_typing(message.channel)
+      if is_playing:
+        await client.send_message(message.channel, '{} A song is still playing.'.format(user.mention))
+      else:
+        song = random.choice(gmusic.get_promoted_songs())
+        song_message = await client.send_message(
+          message.channel,
+          embed=create_song_embed(user, song, timestamp=message.timestamp))
+        await play_song(player, song['storeId'])
+        async def update_embed():
+          if await player.is_playing():
+            state = 'playing'
+          elif player.stream:
+            state = 'paused'
+          else:
+            state = 'stopped'
+          await client.edit_message(
+            song_message,
+            embed=create_song_embed(
+              user, song, timestamp=message.timestamp, state=state
+            )
+          )
+        player.done_callback = lambda: asyncio.run_coroutine_threadsafe(update_embed(), client.loop)
+    elif args[0] == 'pause' and is_playing:
       player.pause()
-    elif args[0] == 'resume':
+      player.done_callback()
+    elif args[0] == 'resume' and not is_playing and player.stream:
       player.resume()
-    elif args[0] == 'stop':
+      player.done_callback()
+    elif args[0] == 'stop' and player.stream:
       player.stop()
+      player.done_callback()
     return
-  else:
-    await client.add_reaction(message, '❓')
-    return
+
+  await client.add_reaction(message, '❓')
 
 
 @client.event

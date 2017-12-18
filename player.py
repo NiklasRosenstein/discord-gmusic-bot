@@ -1,6 +1,7 @@
 
 import asyncio
 import discord
+import logging
 
 
 class Player:
@@ -37,6 +38,8 @@ class Player:
     self.voice_client = voice_client
     self.stream = None
     self.lock = asyncio.Lock()
+    self.done_callback = None
+    self.message = None
 
   @property
   def server(self):
@@ -44,7 +47,7 @@ class Player:
 
   async def is_playing(self):
     with await self.lock:
-      return self.stream
+      return self.stream and self.stream.is_playing()
 
   def pause(self):
     if self.stream:
@@ -70,6 +73,13 @@ class Player:
       if self.stream:
         self.stream.stop()
         self.stream = None
+      if self.done_callback:
+        try:
+          self.done_callback()
+        except Exception as e:
+          logging.exception(e)
+        finally:
+          self.done_callback = None
 
 
 module.exports = Player
