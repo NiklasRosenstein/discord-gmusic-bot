@@ -23,6 +23,9 @@ client = discord.ext.commands.Bot(None, description='Discord GMusic Bot')
 gmusic = gmusicapi.Mobileclient(debug_logging=False)
 reloader = Reloader()
 
+with open(module.directory.joinpath('resources/thanks.txt')) as fp:
+  thanks_urls = list([x.split(',')[1] for x in fp if x.strip()])
+
 
 def handle_command_prefix(_, message):
   if message.channel.topic and 'discord-gmusic-bot' in message.channel.topic:
@@ -210,6 +213,14 @@ async def reload(ctx):
     client.say('Not inside the reloaded process. OMG')
   else:
     reloader.send_reload()
+
+
+@client.command(pass_context=True)
+async def thanks(ctx):
+  url = random.choice(thanks_urls)
+  embed = discord.Embed()
+  embed.set_image(url=url)
+  await client.say(embed=embed)
 
 
 @client.event
