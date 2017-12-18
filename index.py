@@ -125,6 +125,75 @@ async def get_player_for_context(ctx):
   return await Player.get_for_channel(client, channel)
 
 
+async def start_playback(user, timestamp, player, song):
+  song_message = await client.say(
+    embed=create_song_embed(user, song, timestamp)
+  )
+
+  async def update_embed():
+    if await player.is_playing():
+      state = 'playing'
+    elif player.stream:
+      state = 'paused'
+    else:
+      state = 'stopped'
+    await client.edit_message(
+      song_message,
+      embed=create_song_embed(user, song, timestamp, state)
+    )
+
+  logger.info('Starting playback.')
+  await play_song(player, song['storeId'], update_embed)
+  player.done_callback = lambda: asyncio.run_coroutine_threadsafe(update_embed(), client.loop)
+
+
+@client.command(pass_context=True)
+async def queue(ctx, *query: str):
+  client.delete_message(ctx.message)
+  player = await get_player_for_context(ctx)
+  if not player:
+    return
+
+  await client.type()
+  user = ctx.message.author
+
+  query = ' '.join(query)
+  if query == 'show':
+    client.say('Currently queued titles: ... TODO ...')
+    return
+
+  results = gmusic.search(query, max_results=1)
+  if not results['song_hits']:
+    client.say('{} No hits.'.format(user.mention))
+    return
+
+  # TODO: Put song on queue instead of playing immediately.
+  if player.stream:
+    client.say('{} A song is still playing.'.format(user.mention))
+    return
+  await start_playback(user, ctx.message.timestamp, player, results['song_hits'][0]['track'])
+
+
+@client.command(pass_context=True)
+async def search(ctx, *query: str):
+  user = ctx.message.author
+  client.delete_message(ctx.message)
+  await client.type()
+
+  query = ' '.join(query)
+  results = gmusic.search(query, max_results=10)
+  embed = discord.Embed(title='Results for {}'.format(query))
+  embed.set_author(name=user.name, icon_url=user.avatar_url)
+  for song in results['song_hits']:
+    song = song['track']
+    embed.add_field(
+      name=song['title'],
+      value='by {}'.format(song['artist']),
+      inline=False
+    )
+  await client.say(embed=embed)
+
+
 @client.command(pass_context=True)
 async def play(ctx):
   client.delete_message(ctx.message)
@@ -145,31 +214,7 @@ async def play(ctx):
 
   await client.type()
   song = random.choice(gmusic.get_promoted_songs())
-  song_message = await client.say(
-    embed=create_song_embed(
-      user,
-      song,
-      timestamp=ctx.message.timestamp
-    )
-  )
-
-  async def update_embed():
-    if await player.is_playing():
-      state = 'playing'
-    elif player.stream:
-      state = 'paused'
-    else:
-      state = 'stopped'
-    await client.edit_message(
-      song_message,
-      embed=create_song_embed(
-        user, song, timestamp=ctx.message.timestamp, state=state
-      )
-    )
-
-  logger.info('Starting playing.')
-  await play_song(player, song['storeId'], update_embed)
-  player.done_callback = lambda: asyncio.run_coroutine_threadsafe(update_embed(), client.loop)
+  await start_playback(user, ctx.message.timestamp, player, song)
 
 
 @client.command(pass_context=True)

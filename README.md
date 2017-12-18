@@ -54,3 +54,8 @@ You should see a URL that allows you to add the bot to your server printed
 in the console. Press CTRL+C to stop the bot. *Note: The discord API or the
 asyncio module in Python seem to have a long delay from you pressing CTRL+C
 and raising a KeyboardInterrupt exception.*
+
+### Useful Tools
+
+* https://discordapi.com/permissions.html
+* https://leovoel.github.io/embed-visualizer/
