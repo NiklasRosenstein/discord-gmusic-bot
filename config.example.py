@@ -4,3 +4,4 @@ gmusic_user = 'me@gmail.com'
 gmusic_password = 'myapppassword'
 win_opus_dll = 'libopus-0.x64.dll'
 song_cache_dir = 'song_cache'
+use_reloader = False

@@ -6,13 +6,17 @@ import discord, discord.ext.commands
 import logging
 import gmusicapi
 import os
+import nodepy
 import random
 import re
+import signal
+import subprocess
 import sys
 import time
 
 import config from './config'
 import Player from './player'
+import Reloader from './reloader'
 
 logger = logging.getLogger('discord-gmusic-bot')
 client = discord.ext.commands.Bot(
@@ -20,6 +24,7 @@ client = discord.ext.commands.Bot(
   description='Discord GMusic Bot'
 )
 gmusic = gmusicapi.Mobileclient()
+reloader = Reloader()
 
 
 async def get_player_for_context(ctx):
@@ -124,6 +129,16 @@ async def stop(ctx):
     await player.stop()
 
 
+@client.command(pass_context=True)
+async def reload(ctx):
+  if not config.use_reloader:
+    client.say('Reloading is disabled.')
+  elif not reloader.is_inner():
+    client.say('Not inside the reloaded process. OMG')
+  else:
+    reloader.send_reload()
+
+
 @client.event
 async def on_ready():
   client_id = (await client.application_info()).id
@@ -135,6 +150,11 @@ async def on_ready():
 
 
 def main():
+  if config.use_reloader and not reloader.is_inner():
+    argv = nodepy.runtime.exec_args + [str(module.filename)]
+    reloader.run_forever(argv)
+    return
+
   logging.basicConfig(level=logging.INFO)
   logger.setLevel(logging.INFO)
 
