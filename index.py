@@ -19,12 +19,19 @@ import Player from './player'
 import Reloader from './reloader'
 
 logger = logging.getLogger('discord-gmusic-bot')
-client = discord.ext.commands.Bot(
-  command_prefix=discord.ext.commands.when_mentioned_or('/gmusic '),
-  description='Discord GMusic Bot'
-)
+client = discord.ext.commands.Bot(None, description='Discord GMusic Bot')
 gmusic = gmusicapi.Mobileclient()
 reloader = Reloader()
+
+
+def handle_command_prefix(_, message):
+  if message.channel.topic and 'discord-gmusic-bot' in message.channel.topic:
+    return ''
+  else:
+    return client.user.mention
+
+client.command_prefix = handle_command_prefix
+client.remove_command('help')
 
 
 async def get_player_for_context(ctx):
@@ -37,8 +44,65 @@ async def get_player_for_context(ctx):
 
 
 @client.command(pass_context=True)
+async def help(ctx):
+  await client.type()
+  name = ctx.message.channel.server.me.nick or client.user.name
+  icon_url = ctx.message.channel.server.me.avatar_url or client.user.avatar_url
+  embed = discord.Embed()
+  embed.set_author(name=name, icon_url=icon_url)
+  embed.add_field(
+    name='help',
+    value='Show this message.',
+    inline=False
+  )
+  embed.add_field(
+    name='play',
+    value='Resume playing from the queue. If the queue is empty, play a '
+          'random song.',
+    inline=False
+  )
+  embed.add_field(
+    name='play <query>',
+    value='Play the first song returned by the query.',
+    inline=False
+  )
+  embed.add_field(
+    name='queue',
+    value='Show the tracks currently in the queue.',
+    inline=False
+  )
+  embed.add_field(
+    name='queue <query>',
+    value='Alias for `play <query>`.',
+    inline=False
+  )
+  embed.add_field(
+    name='pause',
+    value='Pause the playback.',
+    inline=False
+  )
+  embed.add_field(
+    name='stop',
+    value='Stop the playback and remove the curent song from the tip of the queue.',
+    inline=False
+  )
+  embed.add_field(
+    name='skip',
+    value='Play the next song in the queue.',
+    inline=False
+  )
+  embed.add_field(
+    name='search <query>',
+    value='Show the first 10 results that match the `<query>`.',
+    inline=False
+  )
+  await client.say(embed=embed)
+
+
+@client.command(pass_context=True)
 async def queue(ctx, *query: str):
   query = ' '.join(query).strip()
+  client.say('You sent me: {}'.format(repr(query)))
   user = ctx.message.author
   await client.type()
 
@@ -122,6 +186,14 @@ async def stop(ctx):
   if player:
     logger.info('Stopping playback.')
     await player.stop()
+
+
+@client.command(pass_context=True)
+async def skip(ctx):
+  player = await get_player_for_context(ctx)
+  if player:
+    await player.skip_song()
+    await player.resume()
 
 
 @client.command(pass_context=True)

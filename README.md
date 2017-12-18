@@ -5,10 +5,20 @@ A Discord bot that plays music via Google Play Music.
 __To do__
 
 * Implement playlist/queue, searching for a title, etc.
+* Ability to configure a special channel, where you don't need to address the
+  bot specifically with a prefix
 * Stream audio from GMusic instead of caching files into the `song_cache/` directory?
   Streaming the HTTPResponse into `create_ffmpeg_player()` (using a `os.pipe()`)
   gives an ffmpeg warning `[mp3 @ 0000000000d62340] invalid concatenated file detected - using bitrate for duration`,
   probably because the file size can not be determined.
+
+### Usage
+
+If you have a text-channel where the topic contains the string
+`discord-gmusic-bot`, any message is considered a command for the bot. In any
+other channel, you will need to mention the bot first.
+
+Send `help` to get a list of available commands.
 
 ### Installation & Deployment
 

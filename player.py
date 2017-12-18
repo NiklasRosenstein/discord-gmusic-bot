@@ -145,8 +145,11 @@ class Player:
     with await self.lock:
       self.process_queue = False
     await self.__kill_stream()
+
+  async def skip_song(self):
     with await self.lock:
-      await self.__update_current_song_message()
+      self.process_queue = True
+    await self.__kill_stream()
 
   async def __start_ffmpeg_stream(self, *args, **kwargs):
     with await self.lock:
