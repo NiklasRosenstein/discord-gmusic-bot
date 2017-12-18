@@ -18,7 +18,10 @@ import config from './config'
 import Player from './player'
 
 logger = logging.getLogger('discord-gmusic-bot')
-client = discord.ext.commands.Bot('?', description='Discord GMusic Bot')
+client = discord.ext.commands.Bot(
+  command_prefix=discord.ext.commands.when_mentioned_or('/gmusic '),
+  description='Discord GMusic Bot'
+)
 gmusic = gmusicapi.Mobileclient()
 
 
@@ -129,6 +132,12 @@ async def play(ctx):
   if not player:
     return
 
+  if player.stream and not await player.is_playing():
+    logger.info('Resuming playback.')
+    player.resume()
+    player.done_callback()
+    return
+
   user = ctx.message.author
   if player.stream:
     await client.say('{} A song is still playing.'.format(user.mention))
@@ -158,6 +167,7 @@ async def play(ctx):
       )
     )
 
+  logger.info('Starting playing.')
   await play_song(player, song['storeId'], update_embed)
   player.done_callback = lambda: asyncio.run_coroutine_threadsafe(update_embed(), client.loop)
 
@@ -167,16 +177,8 @@ async def pause(ctx):
   client.delete_message(ctx.message)
   player = await get_player_for_context(ctx)
   if player and await player.is_playing():
+    logger.info('Pausing playback.')
     player.pause()
-    player.done_callback()
-
-
-@client.command(pass_context=True)
-async def resume(ctx):
-  client.delete_message(ctx.message)
-  player = await get_player_for_context(ctx)
-  if player and not await player.is_playing() and player.stream:
-    player.resume()
     player.done_callback()
 
 
@@ -185,6 +187,7 @@ async def stop(ctx):
   client.delete_message(ctx.message)
   player = await get_player_for_context(ctx)
   if player and player.stream:
+    logger.info('Stopping playback.')
     player.stop()
 
 
