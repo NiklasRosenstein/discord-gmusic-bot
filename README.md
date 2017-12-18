@@ -13,6 +13,11 @@ __To do__
     >
     >     [mp3 @ 0000000000d62340] invalid concatenated file detected - using bitrate for duration
 
+* Read out YouTube Video Title
+* Support YouTube and Google Music Playlists
+* Understand exclamation mark in `play <query>!` to immediately play the song
+* Add commands to remove/reorder items in the queue
+
 ### Usage
 
 If you have a text-channel where the topic contains the string
