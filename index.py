@@ -1,6 +1,7 @@
 
 import asyncio
 import contextlib
+import functools
 import discord, discord.ext.commands
 import logging
 import gmusicapi
@@ -17,7 +18,7 @@ import config from './config'
 import Player from './player'
 
 logger = logging.getLogger('discord-gmusic-bot')
-client = discord.Client()
+client = discord.ext.commands.Bot('?', description='Discord GMusic Bot')
 gmusic = gmusicapi.Mobileclient()
 
 
@@ -112,67 +113,79 @@ async def play_song(player, song_id, on_start_playing=None):
     await on_start_playing()
 
 
-#@discord.ext.commands.command(pass_context=True)
-@client.event
-async def on_message(message):
-  if not re.match('/gmusic(\s|$)', message.content):
+async def get_player_for_context(ctx):
+  user = ctx.message.author
+  channel = user.voice.voice_channel
+  if not channel:
+    await client.say("{} Join a Voice Channel before playing.".format(user.mention))
+    return None
+  return await Player.get_for_channel(client, channel)
+
+
+@client.command(pass_context=True)
+async def play(ctx):
+  client.delete_message(ctx.message)
+  player = await get_player_for_context(ctx)
+  if not player:
     return
 
-  user = message.author
-  args = re.split('\s+', message.content, 2)[1:]
-
-  if len(args) == 0:
-    await client.send_message(message.channel, "TODO: Show general information about gmusic bot.")
+  user = ctx.message.author
+  if player.stream:
+    await client.say('{} A song is still playing.'.format(user.mention))
     return
 
-  if args[0] in ('play', 'pause', 'resume', 'stop'):
-    await client.delete_message(message)
-    if not user.voice.voice_channel:
-      await client.send_message(message.channel, "{} Join a Voice Channel before playing.".format(user.mention))
-      return
-    player = await Player.get_for_channel(client, user.voice.voice_channel)
-    is_playing = await player.is_playing()
-    if args[0] == 'play':
-      await client.send_typing(message.channel)
-      if player.stream:
-        await client.send_message(message.channel, '{} A song is still playing.'.format(user.mention))
-      else:
-        song = random.choice(gmusic.get_promoted_songs())
-        song_message = await client.send_message(
-          message.channel,
-          embed=create_song_embed(
-            user,
-            song,
-            timestamp=message.timestamp
-          )
-        )
-        async def update_embed():
-          if await player.is_playing():
-            state = 'playing'
-          elif player.stream:
-            state = 'paused'
-          else:
-            state = 'stopped'
-          await client.edit_message(
-            song_message,
-            embed=create_song_embed(
-              user, song, timestamp=message.timestamp, state=state
-            )
-          )
-        await play_song(player, song['storeId'], update_embed)
-        player.done_callback = lambda: asyncio.run_coroutine_threadsafe(update_embed(), client.loop)
-    elif args[0] == 'pause' and is_playing:
-      player.pause()
-      player.done_callback()
-    elif args[0] == 'resume' and not is_playing and player.stream:
-      player.resume()
-      player.done_callback()
-    elif args[0] == 'stop' and player.stream:
-      player.stop()
-      player.done_callback()
-    return
+  await client.type()
+  song = random.choice(gmusic.get_promoted_songs())
+  song_message = await client.say(
+    embed=create_song_embed(
+      user,
+      song,
+      timestamp=ctx.message.timestamp
+    )
+  )
 
-  await client.add_reaction(message, '❓')
+  async def update_embed():
+    if await player.is_playing():
+      state = 'playing'
+    elif player.stream:
+      state = 'paused'
+    else:
+      state = 'stopped'
+    await client.edit_message(
+      song_message,
+      embed=create_song_embed(
+        user, song, timestamp=ctx.message.timestamp, state=state
+      )
+    )
+
+  await play_song(player, song['storeId'], update_embed)
+  player.done_callback = lambda: asyncio.run_coroutine_threadsafe(update_embed(), client.loop)
+
+
+@client.command(pass_context=True)
+async def pause(ctx):
+  client.delete_message(ctx.message)
+  player = await get_player_for_context(ctx)
+  if player and await player.is_playing():
+    player.pause()
+    player.done_callback()
+
+
+@client.command(pass_context=True)
+async def resume(ctx):
+  client.delete_message(ctx.message)
+  player = await get_player_for_context(ctx)
+  if player and not await player.is_playing() and player.stream:
+    player.resume()
+    player.done_callback()
+
+
+@client.command(pass_context=True)
+async def stop(ctx):
+  client.delete_message(ctx.message)
+  player = await get_player_for_context(ctx)
+  if player and player.stream:
+    player.stop()
 
 
 @client.event

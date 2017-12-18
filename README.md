@@ -2,6 +2,13 @@
 
 A Discord bot that plays music via Google Play Music.
 
+__To do__
+
+* Implement playlist/queue, searching for a title, etc.
+* `client.delete_message()` does not work with the `ctx.message` in a
+  Discord command when using the `discord.ext.commands.Bot`, it does however
+  when using an `on_message()` listener.
+
 ### Installation & Deployment
 
 __1. Discord Permissions__ (`3156992`)
