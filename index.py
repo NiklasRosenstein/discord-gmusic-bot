@@ -5,6 +5,7 @@ import discord
 import logging
 import gmusicapi
 import os
+import random
 import re
 import shutil
 import sys
@@ -83,22 +84,29 @@ async def on_message(message):
   if len(args) == 0:
     await client.send_message(message.channel, "TODO: Show general information about gmusic bot.")
     return
-  elif args[0] == 'play':
+  elif args[0] in ('play', 'pause', 'resume', 'stop'):
     if not user.voice.voice_channel:
       await client.add_reaction(message, '🤦')
       await client.send_message(message.channel, "Join a Voice Channel before playing.")
       return
     player = await Player.get_for_channel(client, user.voice.voice_channel)
-    if await player.is_playing():
-      # TODO: Discord doesn't recogise the warning emoji ..
-      #await client.add_reaction(message, '⚠️')
-      await client.send_message(message.channel, "reaction: :warning:")
-      return
-    # TODO: Parse additional arguments to search for songs.
-    await client.add_reaction(message, '👍')
-    song = gmusic.get_promoted_songs()[0]
-    await client.send_message(message.channel, 'Playing: {} by {}'.format(song['title'], song['artist']))
-    await play_song(player, song['storeId'])
+    if args[0] == 'play':
+      if await player.is_playing():
+        # TODO: Discord doesn't recogise the warning emoji ..
+        #await client.add_reaction(message, '⚠️')
+        await client.send_message(message.channel, "reaction: :warning:")
+        return
+      # TODO: Parse additional arguments to search for songs.
+      await client.add_reaction(message, '👍')
+      song = random.choice(gmusic.get_promoted_songs())
+      await client.send_message(message.channel, 'Playing: {} by {}'.format(song['title'], song['artist']))
+      await play_song(player, song['storeId'])
+    elif args[0] == 'pause':
+      player.pause()
+    elif args[0] == 'resume':
+      player.resume()
+    elif args[0] == 'stop':
+      player.stop()
     return
   else:
     await client.add_reaction(message, '❓')

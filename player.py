@@ -46,13 +46,16 @@ class Player:
     with await self.lock:
       return self.stream
 
-  async def pause(self):
+  def pause(self):
     if self.stream:
       self.stream.pause()
 
-  async def resume(self):
+  def resume(self):
     if self.stream:
       self.stream.resume()
+
+  def stop(self):
+    asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
 
   async def start_ffmpeg_stream(self, *args, **kwargs):
     with await self.lock:
