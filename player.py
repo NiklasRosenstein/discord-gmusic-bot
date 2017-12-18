@@ -2,6 +2,7 @@
 import asyncio
 import collections
 import discord
+import enum
 import gmusicapi
 import logging
 import os
@@ -11,11 +12,25 @@ import shutil
 import config from './config'
 
 
+class StreamNotCreatedError(Exception):
+  pass
+
+
+class SongTypes(enum.Enum):
+  Gmusic = 'gmusic'
+  Youtube = 'youtube'
+
+
 class Song:
 
-  def __init__(self, data, user, timestamp=None, message=None, stream=None):
-    assert isinstance(data, dict) and 'storeId' in data, type(data)
+  def __init__(self, type, data, user, timestamp=None, message=None, stream=None):
+    assert type in SongTypes
+    if type == SongTypes.Gmusic:
+      assert isinstance(data, dict) and 'storeId' in data, type(data)
+    elif type == SongTypes.Youtube:
+      assert isinstance(data, str), type(data)
     assert isinstance(user, discord.User), type(user)
+    self.type = type
     self.data = data
     self.user = user
     self.timestamp = timestamp
@@ -23,7 +38,19 @@ class Song:
     self.stream = stream
 
   def __repr__(self):
-    return '<Song title={!r} user={!r}>'.format(self.data['title'], self.user.name)
+    return '<Song type={!r} user={!r}>'.format(self.type, self.user.name)
+
+  @property
+  def name(self):
+    if self.type == SongTypes.Gmusic:
+      return '{} - {}'.format(self.data['title'], self.data['artist'])
+    elif self.type == SongTypes.Youtube:
+      if self.stream:
+        return self.stream.title
+      else:
+        return str(self.data)
+    else:
+      raise RuntimeError
 
   def create_embed(self):
     if self.stream and self.stream.is_playing():
@@ -35,47 +62,81 @@ class Song:
     else:
       state = 'loading'
 
-    lines = []
-    lines.append('**Title** — {}'.format(self.data['title']))
-    lines.append('**Artist** — {}'.format(self.data['artist']))
-    lines.append('**Album** — {}'.format(self.data['album']))
-    lines.append('**Genre** — {}'.format(self.data['genre']))
-    embed = discord.Embed(
-      timestamp=self.timestamp,
-      description='\n'.join(lines),
-      colour=discord.Colour.dark_teal(),
-      url='https://google.com' # TODO: URL to play/queue the song again
-    )
-    embed.set_author(name=self.user.name, icon_url=self.user.avatar_url)
-    for ref in self.data['albumArtRef']:
-      if 'url' in ref:
-        embed.set_image(url=ref['url'])
-        break
-    if state == 'loading':
-      embed.add_field(
-        name='Controls',
-        value='Loading...'
+    if self.type == SongTypes.Gmusic:
+      lines = []
+      lines.append('**Title** — {}'.format(self.data['title']))
+      lines.append('**Artist** — {}'.format(self.data['artist']))
+      lines.append('**Album** — {}'.format(self.data['album']))
+      lines.append('**Genre** — {}'.format(self.data['genre']))
+      embed = discord.Embed(
+        timestamp=self.timestamp,
+        description='\n'.join(lines),
+        colour=discord.Colour.dark_teal(),
+        url='https://google.com' # TODO: URL to play/queue the song again
       )
-    elif state == 'playing':
-      embed.add_field(
-        name='Controls',
-        value='[⏸](https://github.com) [⏹️](https://discordapp.com)',
-        inline=False
-      )
-    elif state == 'paused':
-      embed.add_field(
-        name='Controls',
-        value='[▶️](https://google.com) [⏹️](https://discordapp.com)',
-        inline=False
-      )
+      embed.set_author(name=self.user.name, icon_url=self.user.avatar_url)
+      for ref in self.data['albumArtRef']:
+        if 'url' in ref:
+          embed.set_image(url=ref['url'])
+          break
+      if state == 'loading':
+        embed.add_field(
+          name='Controls',
+          value='Loading...'
+        )
+      elif state == 'playing':
+        embed.add_field(
+          name='Controls',
+          value='[⏸](https://github.com) [⏹️](https://discordapp.com)',
+          inline=False
+        )
+      elif state == 'paused':
+        embed.add_field(
+          name='Controls',
+          value='[▶️](https://google.com) [⏹️](https://discordapp.com)',
+          inline=False
+        )
+
+    elif self.type == SongTypes.Youtube:
+      embed = discord.Embed(description=self.data)
+
+    else:
+      raise RuntimeError
 
     return embed
+
+  async def create_stream(self, voice_client, after=None):
+    if self.stream:
+      raise RuntimeError('Song already has a stream')
+    if self.type == SongTypes.Gmusic:
+      song_id = self.data['storeId']
+      os.makedirs(config.song_cache_dir, exist_ok=True)
+      filename = os.path.join(config.song_cache_dir, song_id + '.mp3')
+      if not os.path.isfile(filename):
+        try:
+          url = self.gmusic.get_stream_url(song_id)
+        except gmusicapi.exceptions.CallFailure as e:
+          raise StreamNotCreatedError() from e
+        try:
+          response = urllib.request.urlopen(url)
+        except (urllib.error.URLError, urllib.error.HTTPError) as e:
+          raise StreamNotCreatedError() from e
+        with open(filename, 'wb') as fp:
+          shutil.copyfileobj(response, fp)
+      self.stream = voice_client.create_ffmpeg_player(filename, after=after)
+    elif self.type == SongTypes.Youtube:
+      self.stream = await voice_client.create_ytdl_player(self.data)
+    else:
+      raise RuntimeError
 
 
 class Player:
   """
   Wraps around a #discord.VoiceChannel and keeps track of the current stream.
   """
+
+  GmusicSong = SongTypes.Gmusic
+  YoutubeSong = SongTypes.Youtube
 
   players = []
 
@@ -162,14 +223,6 @@ class Player:
       self.process_queue = True
     await self.__kill_stream()
 
-  async def __start_ffmpeg_stream(self, *args, **kwargs):
-    with await self.lock:
-      if self.current_song and self.current_song.stream:
-        raise RuntimeError('cant start a new stream if another is still playing')
-      kwargs['after'] = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
-      self.current_song.stream = self.voice_client.create_ffmpeg_player(*args, **kwargs)
-      self.current_song.stream.start()
-
   async def __update_current_song_message(self):
     if self.current_song and self.current_song.message:
       await self.client.edit_message(
@@ -202,43 +255,25 @@ class Player:
         song.message = await self.client.say(embed=song.create_embed())
       self.current_song = song
 
-    song_id = song.data['storeId']
-    os.makedirs(config.song_cache_dir, exist_ok=True)
-    filename = os.path.join(config.song_cache_dir, song_id + '.mp3')
-    if not os.path.isfile(filename):
-      error = None
-      response = None
+    after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
+    try:
+      await song.create_stream(self.voice_client, after)
+    except StreamNotCreatedError as exc:
+      logger.exception(exc)
+      self.current_song = None
+      msg = '{} Something went wrong playing  **{}**.'
+      msg = msg.format(song.user.mention, song.name)
+      await self.client.delete_message(song.message)
+      await self.client.say(msg)
+      return False
 
-      try:
-        url = self.gmusic.get_stream_url(song_id)
-      except gmusicapi.exceptions.CallFailure as e:
-        error = e
-        logging.error(e)
-      else:
-        try:
-          response = urllib.request.urlopen(url)
-        except (urllib.error.URLError, urllib.error.HTTPError) as e:
-          error = e
-          logging.error(e)
-
-      if not response:
-        self.current_song = None
-        msg = '{} Something went wrong playing your track **{} - {}**, sorry.'
-        msg = msg.format(song.user.mention, song.data['title'], song.data['artist'])
-        await self.client.delete_message(song.message)
-        await self.client.say(msg)
-        return False
-
-      with open(filename, 'wb') as fp:
-        shutil.copyfileobj(response, fp)
-
-    logging.info('Starting playback.')
-    await self.__start_ffmpeg_stream(filename)
+    song.stream.start()
     await self.__update_current_song_message()
+    return True
 
-  async def queue_song(self, song_data, user, timestamp):
+  async def queue_song(self, type, data, user, timestamp):
     with await self.lock:
-      song = Song(song_data, user, timestamp)
+      song = Song(type, data, user, timestamp)
       if self.current_song:
         self.queue.append(song)
         return 'queued'

@@ -6,6 +6,7 @@
   "pip_dependencies": {
     "gmusicapi": ">=11.0.0",
     "discord.py": ">=0.16.12",
-    "PyNaCl": ">=1.2.1"
+    "PyNaCl": ">=1.2.1",
+    "youtube-dl": ">=2017.12.14"
   }
 }

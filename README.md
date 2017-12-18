@@ -1,6 +1,6 @@
 ## discord-gmusic-bot (WIP)
 
-A Discord bot that plays music via Google Play Music.
+A Discord bot that plays music via Google Play Music or from Youtube.
 
 __To do__
 

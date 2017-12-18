@@ -13,6 +13,7 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.parse
 
 import config from './config'
 import Player from './player'
@@ -112,11 +113,18 @@ async def do_queue(ctx, query=None, play_query=None):
     player = await Player.get_for_server(user.server)
     embed = discord.Embed()
     for song in (player.queue if player else []):
-      embed.add_field(
-        name='{} - {}'.format(song.data['title'], song.data['artist']),
-        value='added by {}'.format(song.user.mention),
-        inline=False
-      )
+      if song.type == Player.GmusicSong:
+        embed.add_field(
+          name='{} - {}'.format(song.data['title'], song.data['artist']),
+          value='added by {}'.format(song.user.mention),
+          inline=False
+        )
+      elif song.type == Player.YoutubeSong:
+        embed.add_field(
+          name=song.name,
+          value='added by {}'.format(song.user.mention),
+          inline=False
+        )
     await client.say(embed=embed)
     return
 
@@ -124,14 +132,21 @@ async def do_queue(ctx, query=None, play_query=None):
   if not player:
     return
 
+  info = urllib.parse.urlparse(query)
+  if info.scheme and info.netloc and info.path:
+    if 'youtu' in info.netloc:
+      await player.queue_song(Player.YoutubeSong, query, user, ctx.message.timestamp)
+    else:
+      await client.say('That doesn\'t look like a Youtube URL.')
+    return
+
   results = gmusic.search(query, max_results=10)
   if not results['song_hits']:
     await client.say('{} Sorry, seems like Google Music sucks.'.format(user.mention))
     return
 
-  # TODO: Put song on queue instead of playing immediately.
   song = results['song_hits'][0]['track']
-  result = await player.queue_song(song, user, ctx.message.timestamp)
+  result = await player.queue_song(Player.GmusicSong, song, user, ctx.message.timestamp)
   if result == 'queued' and play_query:
     await client.say('{} I\'ve added *{} - {}* to the queue.'.format(user.mention, song['title'], song['artist']))
 
@@ -175,7 +190,7 @@ async def play(ctx):
   if not await player.has_current_song() and not player.queue:
     client.say('{} Playing a random song.'.format(user.mention))
     song = random.choice(gmusic.get_promoted_songs())
-    await player.queue_song(song, user, ctx.message.timestamp)
+    await player.queue_song(Player.GmusicSong, song, user, ctx.message.timestamp)
     await player.resume()
   elif not await player.is_playing():
     await player.resume()
