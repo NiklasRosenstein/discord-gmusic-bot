@@ -5,6 +5,7 @@ import discord
 import logging
 import gmusicapi
 import os
+import re
 import shutil
 import sys
 import time
@@ -73,25 +74,35 @@ async def play_song(player, song_id):
 
 @client.event
 async def on_message(message):
-  if message.content == 'say hello':
-    # Find the voice channel that the user is in.
-    for channel in message.server.channels:
-      if channel.type != discord.ChannelType.voice: continue
-      if discord.utils.find(lambda x: x == message.author, channel.voice_members):
-        break
-    else:
-      channel = None
-      await client.send_message(message.channel, "You're not in a voice channel.")
-    if channel:
-      player = await Player.get_for_channel(client, channel)
-      if await player.is_playing():
-        await client.send_message(message.channel, 'Please wait until the current title stopped playing.')
-      else:
-        # Play the first promoted song.
-        song = gmusic.get_promoted_songs()[0]
-        await client.send_message(message.channel, 'Playing: {} by {}'.format(song['title'], song['artist']))
-        await play_song(player, song['storeId'])
-        print('@@@ on_message(): play_song() finished')
+  if not re.match('/gmusic(\s|$)', message.content):
+    return
+
+  user = message.author
+  args = re.split('\s+', message.content, 2)[1:]
+  print(args)
+  if len(args) == 0:
+    await client.send_message(message.channel, "TODO: Show general information about gmusic bot.")
+    return
+  elif args[0] == 'play':
+    if not user.voice.voice_channel:
+      await client.add_reaction(message, '🤦')
+      await client.send_message(message.channel, "Join a Voice Channel before playing.")
+      return
+    player = await Player.get_for_channel(client, user.voice.voice_channel)
+    if await player.is_playing():
+      # TODO: Discord doesn't recogise the warning emoji ..
+      #await client.add_reaction(message, '⚠️')
+      await client.send_message(message.channel, "reaction: :warning:")
+      return
+    # TODO: Parse additional arguments to search for songs.
+    await client.add_reaction(message, '👍')
+    song = gmusic.get_promoted_songs()[0]
+    await client.send_message(message.channel, 'Playing: {} by {}'.format(song['title'], song['artist']))
+    await play_song(player, song['storeId'])
+    return
+  else:
+    await client.add_reaction(message, '❓')
+    return
 
 
 @client.event
