@@ -57,8 +57,8 @@ recommended in general.
     $ nodepy https://nodepy.org/install-pm.py
     $ git clone https://github.com/NiklasRosenstein/discord-music-bot.git
     $ cd discord-music-bot
-    $ cp config.example.py config.py
-    $ $(EDITOR) config.py
+    $ cp config.example.toml config.toml
+    $ $(EDITOR) config.toml
     $ nodepy-pm install
     $ nodepy .
 
@@ -74,7 +74,7 @@ __libopus__
 
 On Windows, Discord.py comes with a version of `libopus-0.x86.dll` and
 `libopus-0.x64.dll`, so you only need to use the right name depending on your
-Python version in `config.py`.
+Python version in `config.toml`.
 
 Alternatively, you can download a Windows opus build from the [Opus download]
 page for Windows x86 or from the [craftr-libopus] repository for Windows x64.

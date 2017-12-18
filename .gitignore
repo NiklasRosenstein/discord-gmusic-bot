@@ -1,4 +1,4 @@
 .nodepy
-config.py
+config.toml
 opus.dll
 song_cache

@@ -4,12 +4,9 @@ import collections
 import discord
 import enum
 import gmusicapi
-import logging
 import os
 import urllib.request
 import shutil
-
-import config from './config'
 
 
 class StreamNotCreatedError(Exception):
@@ -106,16 +103,16 @@ class Song:
 
     return embed
 
-  async def create_stream(self, voice_client, after=None):
+  async def create_stream(self, config, gmusic, voice_client, after=None):
     if self.stream:
       raise RuntimeError('Song already has a stream')
     if self.type == SongTypes.Gmusic:
       song_id = self.data['storeId']
-      os.makedirs(config.song_cache_dir, exist_ok=True)
-      filename = os.path.join(config.song_cache_dir, song_id + '.mp3')
+      os.makedirs(config['general']['cache_dir'], exist_ok=True)
+      filename = os.path.join(config['general']['cache_dir'], song_id + '.mp3')
       if not os.path.isfile(filename):
         try:
-          url = self.gmusic.get_stream_url(song_id)
+          url = gmusic.get_stream_url(song_id)
         except gmusicapi.exceptions.CallFailure as e:
           raise StreamNotCreatedError() from e
         try:
@@ -129,7 +126,41 @@ class Song:
       self.stream = await voice_client.create_ytdl_player(self.data)
     else:
       raise RuntimeError
-    self.stream.volume = config.default_volume
+
+
+class PlayerFactory:
+
+  def __init__(self, client, gmusic, config, logger):
+    self.client = client
+    self.gmusic = gmusic
+    self.config = config
+    self.logger = logger
+    self.players = []
+
+  def get(self, voice_client):
+    player = discord.utils.find(
+      lambda x: x.voice_client == voice_client,
+      self.players)
+    if player is None:
+      player = Player(self.client, self.gmusic, self.config, self.logger, voice_client)
+      self.players.append(player)
+    return player
+
+  async def get_for_channel(self, channel):
+    # Find the existing voice client for the channel.
+    voice_client = discord.utils.find(
+      lambda x: x.server == channel.server,
+      self.client.voice_clients)
+    if voice_client and voice_client.channel != channel:
+      voice_client.move_to(channel)
+    elif not voice_client:
+      voice_client = await self.client.join_voice_channel(channel)
+    return self.get(voice_client)
+
+  async def get_for_server(self, server):
+    return discord.utils.find(
+      lambda x: x.voice_client.server == server,
+      self.players)
 
 
 class Player:
@@ -137,43 +168,16 @@ class Player:
   Wraps around a #discord.VoiceChannel and keeps track of the current stream.
   """
 
+  Factory = PlayerFactory
   GmusicSong = SongTypes.Gmusic
   YoutubeSong = SongTypes.Youtube
 
-  players = []
-
-  @classmethod
-  def get(cls, client, gmusic, voice_client):
-    player = discord.utils.find(
-      lambda x: x.voice_client == voice_client,
-      cls.players)
-    if player is None:
-      player = cls(client, gmusic, voice_client)
-      cls.players.append(player)
-    return player
-
-  @classmethod
-  async def get_for_channel(cls, client, gmusic, channel):
-    # Find the existing voice client for the channel.
-    voice_client = discord.utils.find(
-      lambda x: x.server == channel.server,
-      client.voice_clients)
-    if voice_client and voice_client.channel != channel:
-      voice_client.move_to(channel)
-    elif not voice_client:
-      voice_client = await client.join_voice_channel(channel)
-    return cls.get(client, gmusic, voice_client)
-
-  @classmethod
-  async def get_for_server(cls, server):
-    return discord.utils.find(
-      lambda x: x.voice_client.server == server,
-      cls.players)
-
-  def __init__(self, client, gmusic, voice_client):
+  def __init__(self, client, gmusic, config, logger, voice_client):
     self.client = client
     self.loop = client.loop
     self.gmusic = gmusic
+    self.config = config
+    self.logger = logger
     self.voice_client = voice_client
     self.lock = asyncio.Lock()
     self.current_song = None
@@ -240,7 +244,7 @@ class Player:
       try:
         await self.__update_current_song_message()
       except Exception as e:
-        logging.exception(e)
+        self.logger.exception(e)
       self.current_song = None
       if self.process_queue and self.queue:
         next_song = self.queue.pop(0)
@@ -249,7 +253,7 @@ class Player:
 
   async def __play_song(self, song):
     if await self.is_playing():
-      logging.error('can not play song, already playing another')
+      self.logger.error('can not play song, already playing another')
       return False
 
     with await self.lock:
@@ -259,9 +263,9 @@ class Player:
 
     after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
     try:
-      await song.create_stream(self.voice_client, after)
+      await song.create_stream(self.config, self.gmusic, self.voice_client, after)
     except StreamNotCreatedError as exc:
-      logger.exception(exc)
+      self.logger.exception(exc)
       self.current_song = None
       msg = '{} Something went wrong playing  **{}**.'
       msg = msg.format(song.user.mention, song.name)
@@ -269,6 +273,7 @@ class Player:
       await self.client.say(msg)
       return False
 
+    song.stream.volume = self.config['general']['music_volume']
     song.stream.start()
     await self.__update_current_song_message()
     return True

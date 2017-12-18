@@ -13,9 +13,9 @@ import signal
 import subprocess
 import sys
 import time
+import toml
 import urllib.parse
 
-import config from './config'
 import Player from './player'
 import Reloader from './reloader'
 
@@ -24,8 +24,13 @@ client = discord.ext.commands.Bot(None, description='Discord GMusic Bot')
 gmusic = gmusicapi.Mobileclient(debug_logging=False)
 reloader = Reloader()
 
-with open(module.directory.joinpath('resources/thanks.txt')) as fp:
+with module.directory.joinpath('config.toml').open() as fp:
+  config = toml.load(fp)
+
+with module.directory.joinpath('resources/thanks.txt').open() as fp:
   thanks_urls = list([x.split(',')[1] for x in fp if x.strip()])
+
+players = Player.Factory(client, gmusic, config, logger)
 
 
 def handle_command_prefix(_, message):
@@ -44,7 +49,7 @@ async def get_player_for_context(ctx):
   if not channel:
     await client.say("{} Join a Voice Channel first.".format(user.mention))
     return None
-  return await Player.get_for_channel(client, gmusic, channel)
+  return await players.get_for_channel(channel)
 
 
 @client.command(pass_context=True)
@@ -112,7 +117,7 @@ async def do_queue(ctx, query=None, play_query=None):
 
   user = ctx.message.author
   if not query:
-    player = await Player.get_for_server(user.server)
+    player = await players.get_for_server(user.server)
     embed = discord.Embed()
     for song in (player.queue if player else []):
       if song.type == Player.GmusicSong:
@@ -224,7 +229,7 @@ async def skip(ctx):
 
 @client.command(pass_context=True)
 async def reload(ctx):
-  if not config.use_reloader:
+  if not config['debug']['use_reloader']:
     client.say('Reloading is disabled.')
   elif not reloader.is_inner():
     client.say('Not inside the reloaded process. OMG')
@@ -246,12 +251,12 @@ async def on_ready():
   logger.info('discord-gmusic-bot is ready.')
   logger.info('Add the bot to your Server:')
   logger.info('')
-  logger.info('        {}'.format(config.discord_add_url.format(CLIENT_ID=client_id)))
+  logger.info('        {}'.format(config['discord']['add_bot_url'].format(CLIENT_ID=client_id)))
   logger.info('')
 
 
 def main():
-  if config.use_reloader and not reloader.is_inner():
+  if config['debug']['use_reloader'] and not reloader.is_inner():
     argv = nodepy.runtime.exec_args + [str(module.filename)]
     reloader.run_forever(argv)
     return
@@ -260,7 +265,7 @@ def main():
   logger.setLevel(logging.INFO)
 
   # Log-in to the Google Music API.
-  if not gmusic.login(config.gmusic_user, config.gmusic_password,
+  if not gmusic.login(config['gmusic']['username'], config['gmusic']['password'],
       gmusicapi.Mobileclient.FROM_MAC_ADDRESS):
     logger.error('Unable to authenticate with Google Play Music.')
     asyncio.wait(asyncio.ensure_future(client.close()))
@@ -268,13 +273,13 @@ def main():
 
   # Load the Opus codec.
   if os.name == 'nt':
-    logger.info('Loading {} ...'.format(config.win_opus_dll))
-    discord.opus.load_opus(config.win_opus_dll)
+    logger.info('Loading {} ...'.format(config['windows']['opus_dll']))
+    discord.opus.load_opus(config['windows']['opus_dll'])
   if not discord.opus.is_loaded():
     logger.error('Opus not loaded.')
     return 1
 
-  client.run(config.discord_token)
+  client.run(config['discord']['token'])
   logger.info('Bye, bye.')
 
 
