@@ -9,17 +9,13 @@ __To do__
   Streaming the HTTPResponse into `create_ffmpeg_player()` (using a `os.pipe()`)
   gives an ffmpeg warning `[mp3 @ 0000000000d62340] invalid concatenated file detected - using bitrate for duration`,
   probably because the file size can not be determined.
-* `client.delete_message()` does not work with the `ctx.message` in a
-  Discord command when using the `discord.ext.commands.Bot`, it does however
-  when using an `on_message()` listener.
 
 ### Installation & Deployment
 
-__1. Discord Permissions__ (`3156992`)
+__1. Discord Permissions__ (`3148800`)
 
 * Text : Read Messages
 * Text : Send Messages
-* Text : Manage Messages
 * Voice : View Channel
 * Voice : Connect
 * Voice : Speak

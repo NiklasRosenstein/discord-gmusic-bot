@@ -40,7 +40,6 @@ async def get_player_for_context(ctx):
 async def queue(ctx, *query: str):
   query = ' '.join(query).strip()
   user = ctx.message.author
-  client.delete_message(ctx.message)
   await client.type()
 
   if (not query or query == 'show'):
@@ -72,7 +71,6 @@ async def queue(ctx, *query: str):
 @client.command(pass_context=True)
 async def search(ctx, *query: str):
   user = ctx.message.author
-  client.delete_message(ctx.message)
   await client.type()
 
   query = ' '.join(query)
@@ -91,7 +89,6 @@ async def search(ctx, *query: str):
 
 @client.command(pass_context=True)
 async def play(ctx, *query: str):
-  client.delete_message(ctx.message)
   player = await get_player_for_context(ctx)
   if not player:
     return
@@ -113,7 +110,6 @@ async def play(ctx, *query: str):
 
 @client.command(pass_context=True)
 async def pause(ctx):
-  client.delete_message(ctx.message)
   player = await get_player_for_context(ctx)
   if player and await player.is_playing():
     logger.info('Pausing playback.')
@@ -122,7 +118,6 @@ async def pause(ctx):
 
 @client.command(pass_context=True)
 async def stop(ctx):
-  client.delete_message(ctx.message)
   player = await get_player_for_context(ctx)
   if player:
     logger.info('Stopping playback.')
