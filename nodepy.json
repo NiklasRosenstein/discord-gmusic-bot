@@ -1,0 +1,11 @@
+{
+  "name": "@NiklasRosenstein/discord-gmusic-bot",
+  "version": "1.0.0",
+  "authors": "rosensteinniklas@gmail.com",
+  "license": "MIT",
+  "pip_dependencies": {
+    "gmusicapi": ">=11.0.0",
+    "discord.py": ">=0.16.12",
+    "PyNaCl": ">=1.2.1"
+  }
+}
