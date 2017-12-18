@@ -8,6 +8,8 @@ __To do__
 
     > Streaming the HTTPResponse into `create_ffmpeg_player()` (using a `os.pipe()`)
     > gives an ffmpeg warning, probably because the file size can not be determined.
+    > It seems that the file size can not be properly determined, isn't played
+    > for it's whole duration.
     >
     >     [mp3 @ 0000000000d62340] invalid concatenated file detected - using bitrate for duration
 
@@ -18,6 +20,8 @@ If you have a text-channel where the topic contains the string
 other channel, you will need to mention the bot first.
 
 Send `help` to get a list of available commands.
+
+![](https://i.imgur.com/1HFDCmY.png)
 
 ### Installation & Deployment
 
