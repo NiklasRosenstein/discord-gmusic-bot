@@ -128,6 +128,7 @@ class Song:
       self.stream = await voice_client.create_ytdl_player(self.data)
     else:
       raise RuntimeError
+    self.stream.volume = config.default_volume
 
 
 class Player:
