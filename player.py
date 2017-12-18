@@ -79,29 +79,30 @@ class Song:
         if 'url' in ref:
           embed.set_image(url=ref['url'])
           break
-      if state == 'loading':
-        embed.add_field(
-          name='Controls',
-          value='Loading...'
-        )
-      elif state == 'playing':
-        embed.add_field(
-          name='Controls',
-          value='[⏸](https://github.com) [⏹️](https://discordapp.com)',
-          inline=False
-        )
-      elif state == 'paused':
-        embed.add_field(
-          name='Controls',
-          value='[▶️](https://google.com) [⏹️](https://discordapp.com)',
-          inline=False
-        )
 
     elif self.type == SongTypes.Youtube:
       embed = discord.Embed(description=self.data)
 
     else:
       raise RuntimeError
+
+    if state == 'loading':
+      embed.add_field(
+        name='Controls',
+        value='Loading...'
+      )
+    elif state == 'playing':
+      embed.add_field(
+        name='Controls',
+        value='[⏸](https://github.com) [⏹️](https://discordapp.com)',
+        inline=False
+      )
+    elif state == 'paused':
+      embed.add_field(
+        name='Controls',
+        value='[▶️](https://google.com) [⏹️](https://discordapp.com)',
+        inline=False
+      )
 
     return embed
 
@@ -212,7 +213,7 @@ class Player:
         if not next_song and self.queue:
           next_song = self.queue.pop(0)
     if next_song:
-      await self.__play_song(song)
+      await self.__play_song(next_song)
 
   async def stop(self):
     with await self.lock:
