@@ -66,7 +66,9 @@ async def help(ctx):
   )
   embed.add_field(
     name='play <query>',
-    value='Play the first song returned by the query.',
+    value='Query can be a Youtube URL or a search query for Google Music. '
+          'Adds the Youtube Video or the first song returned by the search '
+          'query to the queue.',
     inline=False
   )
   embed.add_field(
