@@ -1,7 +1,7 @@
 
 import asyncio
 import contextlib
-import discord
+import discord, discord.ext.commands
 import logging
 import gmusicapi
 import os
@@ -42,7 +42,7 @@ def make_read_pipe(src):
     os.close(pw)
 
 
-def create_song_embed(author, song, timestamp=None, state='playing'):
+def create_song_embed(author, song, timestamp=None, state='loading'):
   lines = []
   lines.append('**Title** — {}'.format(song['title']))
   lines.append('**Artist** — {}'.format(song['artist']))
@@ -59,7 +59,12 @@ def create_song_embed(author, song, timestamp=None, state='playing'):
     if 'url' in ref:
       embed.set_image(url=ref['url'])
       break
-  if state == 'playing':
+  if state == 'loading':
+    embed.add_field(
+      name='Controls',
+      value='Loading...'
+    )
+  elif state == 'playing':
     embed.add_field(
       name='Controls',
       value='[⏸](https://github.com) [⏹️](https://discordapp.com)',
@@ -74,7 +79,7 @@ def create_song_embed(author, song, timestamp=None, state='playing'):
   return embed
 
 
-async def play_song(player, song_id):
+async def play_song(player, song_id, on_start_playing=None):
   # TODO: We should be able to stream the file directly from the URL to
   #       the create_ffmpeg_player() method, but it'll give an mp3 warning
   #       as it can't determine the full size:
@@ -103,8 +108,11 @@ async def play_song(player, song_id):
     with open(filename, 'wb') as fp:
       shutil.copyfileobj(response, fp)
   await player.start_ffmpeg_stream(filename)
+  if on_start_playing:
+    await on_start_playing()
 
 
+#@discord.ext.commands.command(pass_context=True)
 @client.event
 async def on_message(message):
   if not re.match('/gmusic(\s|$)', message.content):
@@ -126,14 +134,18 @@ async def on_message(message):
     is_playing = await player.is_playing()
     if args[0] == 'play':
       await client.send_typing(message.channel)
-      if is_playing:
+      if player.stream:
         await client.send_message(message.channel, '{} A song is still playing.'.format(user.mention))
       else:
         song = random.choice(gmusic.get_promoted_songs())
         song_message = await client.send_message(
           message.channel,
-          embed=create_song_embed(user, song, timestamp=message.timestamp))
-        await play_song(player, song['storeId'])
+          embed=create_song_embed(
+            user,
+            song,
+            timestamp=message.timestamp
+          )
+        )
         async def update_embed():
           if await player.is_playing():
             state = 'playing'
@@ -147,6 +159,7 @@ async def on_message(message):
               user, song, timestamp=message.timestamp, state=state
             )
           )
+        await play_song(player, song['storeId'], update_embed)
         player.done_callback = lambda: asyncio.run_coroutine_threadsafe(update_embed(), client.loop)
     elif args[0] == 'pause' and is_playing:
       player.pause()
@@ -185,11 +198,8 @@ def main():
 
   # Load the Opus codec.
   if os.name == 'nt':
-    opus_filename = config.win_opus_dll
-    if not os.path.isabs(opus_filename):
-      opus_filename = str(module.directory.joinpath(config.win_opus_dll))
-    logger.info('Loading {} ...'.format(opus_filename))
-    discord.opus.load_opus(opus_filename)
+    logger.info('Loading {} ...'.format(config.win_opus_dll))
+    discord.opus.load_opus(config.win_opus_dll)
   if not discord.opus.is_loaded():
     logger.error('Opus not loaded.')
     return 1

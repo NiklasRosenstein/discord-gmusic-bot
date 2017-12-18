@@ -4,38 +4,35 @@ A Discord bot that plays music via Google Play Music.
 
 ### Installation & Deployment
 
-__Discord Permissions__
+__1. Discord Permissions__ (`3156992`)
 
 * Text : Read Messages
 * Text : Send Messages
-* Text : Add Reactions
+* Text : Manage Messages
 * Voice : View Channel
 * Voice : Connect
 * Voice : Speak
 
-__Installing the Opus Codec__
+__2. Installing the Opus Codec__
 
-Follow the [Installing libopus] instructions.
+Follow the [Installing libopus] instructions. On Windows, Discord.py comes
+with a version of `libopus-0.x86.dll` and `libopus-0.x64.dll`, so you only
+need to use the right name depending on your Python version in `config.py`.
 
-__Installing the Opus Codec (Windows)__
-
-If you're using a 32-bit Python version, again follow the [Installing libopus]
-instructions. The binaries provided on the Opus website are no 64-bit versions,
-so if you're using a 64-bit Python version, grab a pre-compiled version of Opus
-from the [craftr-libopus] repository.
-
-Place the pre-compiled `opus.dll` in the `discord-gmusic-bot` directory.
+Alternatively, you can download a Windows opus build from the [Opus download]
+page for Windows x86 or from the [craftr-libopus] repository for Windows x64.
 
   [craftr-libopus]: https://github.com/NiklasRosenstein/craftr-libopus/releases
   [Installing libopus]: https://github.com/meew0/discordrb/wiki/Installing-libopus
+  [Opus download]: http://opus-codec.org/downloads/
 
-__Create an App-specific password for your Google Account__
+__3. Create an App-specific password for your Google Account__
 
 This can be done under https://myaccount.google.com/apppasswords and is
 necessary for accounts secured by two-factor authentication, yet still
 recommended in general.
 
-__Getting up and running__
+__4. Getting up and running__
 
     $ pip3 install nodepy-runtime
     $ nodepy https://nodepy.org/install-pm.py
