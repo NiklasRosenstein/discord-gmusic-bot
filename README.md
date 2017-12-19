@@ -55,6 +55,10 @@ recommended in general.
 
 ### Installation
 
+  [Dokku]: https://github.com/dokku/dokku
+
+You can deploy the bot with [Dokku], or install and run it like this:
+
     $ pip3 install nodepy-runtime
     $ nodepy https://nodepy.org/install-pm.py
     $ git clone https://github.com/NiklasRosenstein/discord-music-bot.git
