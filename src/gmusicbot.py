@@ -98,10 +98,11 @@ class GMusicBot:
     prefix = self.check_command_prefix(message)
     if not message.content.startswith(prefix):
       return
-    content = message.content[len(prefix):]
+    content = message.content[len(prefix):].lstrip()
     for command in self.COMMANDS:
-      if content.startswith(command.name):
-        content = content[len(command.name):]
+      match = re.match('^{}(\s|$)'.format(re.escape(command.name)), content)
+      if match:
+        content = content[match.end():].lstrip()
         await command.handler(self, message, content)
         return
 
