@@ -108,16 +108,19 @@ class GMusicBot:
           await command.handler(self, message, content)
         except Exception as e:
           self.logger.error('Exception handling command "{}"'.format(command.name))
-          self.logger.exception(e)
-          await self.client.send_message(message.channel, 'Internal Error')
-          if self.config['general'].get('debug'):
-            tb = traceback.format_exc()
-            try:
-              await self.client.send_message(message.channel, '(debug traceback)\n```\n{}```'.format(tb))
-            except Exception as e:
-              self.logger.exception(e)
-              await self.client.send_message(message.channel, '(debug traceback too long: {})'.format(e))
+          await self.handle_exception(message.channel, e)
         return
+
+  async def handle_exception(self, channel, exc):
+    self.logger.exception(e)
+    await self.client.send_message(message.channel, 'Internal Error')
+    if self.config['general'].get('debug'):
+      tb = traceback.format_exc()
+      try:
+        await self.client.send_message(message.channel, '(debug traceback)\n```\n{}```'.format(tb))
+      except Exception as e:
+        self.logger.exception(e)
+        await self.client.send_message(message.channel, '(debug traceback too long: {})'.format(e))
 
   async def get_invite_link(self):
     client_id = (await self.client.application_info()).id
