@@ -105,6 +105,10 @@ class GMusicBot:
         await command.handler(self, message, content)
         return
 
+  async def get_invite_link(self):
+    client_id = (await self.client.application_info()).id
+    return self.config['discord']['add_bot_url'].format(CLIENT_ID=client_id)
+
 
 @GMusicBot.command()
 async def help(self, message, query):
@@ -157,7 +161,12 @@ async def help(self, message, query):
   )
   embed.add_field(
     name='search <query>',
-    value='Show the first 10 results that match the `<query>`.',
+    value='Show the first 10 search results from Google Music.',
+    inline=False
+  )
+  embed.add_field(
+    name='Invite Link for this Bot',
+    value=await self.get_invite_link(),
     inline=False
   )
   await self.client.send_message(message.channel, embed=embed)
@@ -283,7 +292,7 @@ async def reload(self, message, arg):
 
 
 @GMusicBot.command()
-async def thanks(self, message,arg):
+async def thanks(self, message, arg):
   url = random.choice(thanks_urls)
   embed = discord.Embed()
   embed.set_image(url=url)
@@ -292,12 +301,10 @@ async def thanks(self, message,arg):
 
 @GMusicBot.event
 async def on_ready(self):
-  client_id = (await self.client.application_info()).id
-  url = self.config['discord']['add_bot_url'].format(CLIENT_ID=client_id)
   self.logger.info('discord-gmusic-bot is ready.')
   self.logger.info('Add the bot to your Server:')
   self.logger.info('')
-  self.logger.info('        {}'.format(url))
+  self.logger.info('        {}'.format(await self.get_invite_link()))
   self.logger.info('')
 
 
