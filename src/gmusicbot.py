@@ -198,10 +198,12 @@ async def queue(self, message, query, reply_to_user=False):
     await self.client.send_message(message.channel, '{} Join a voice channel, first.'.format(message.author.mention))
     return
 
-  info = urllib.parse.urlparse(query)
+  url = query.strip().lstrip('<').rstrip('>')
+  info = urllib.parse.urlparse(url)
   if info.scheme and info.netloc and info.path:
     if 'youtu' in info.netloc:
-      song = await player.queue_song(Player.YoutubeSong, query, user, message.channel, message.timestamp)
+      player = await self.players.get_player_for_voice_channel(message.author.voice.voice_channel)
+      song = await player.queue_song(Player.YoutubeSong, url, user, message.channel, message.timestamp)
     else:
       await self.client.send_message(message.channel, 'That doesn\'t look like a Youtube URL.')
       return

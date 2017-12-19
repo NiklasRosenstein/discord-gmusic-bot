@@ -7,6 +7,7 @@ import gmusicapi
 import os
 import urllib.request
 import shutil
+import youtube_dl
 
 
 class StreamNotCreatedError(Exception):
@@ -46,7 +47,7 @@ class Song:
       if self.stream:
         return self.stream.title
       else:
-        return str(self.data)
+        return '<{}>'.format(self.data)  # <> disables auto embed
     else:
       raise RuntimeError
 
@@ -60,47 +61,33 @@ class Song:
     else:
       state = 'loading'
 
+    embed = discord.Embed()
+    embed.timestamp = self.timestamp
+    embed.set_author(name=self.user.name, icon_url=self.user.avatar_url)
+    if state == 'loading':
+      embed.title = '💫 Loading ...'
+    elif state == 'playing':
+      embed.title = '▶️ Now Playing'
+    elif state == 'paused':
+      embed.title = '⏸️ Paused'
+
     if self.type == SongTypes.Gmusic:
       lines = []
       lines.append('**Title** — {}'.format(self.data['title']))
       lines.append('**Artist** — {}'.format(self.data['artist']))
       lines.append('**Album** — {}'.format(self.data['album']))
       lines.append('**Genre** — {}'.format(self.data['genre']))
-      embed = discord.Embed(
-        timestamp=self.timestamp,
-        description='\n'.join(lines),
-        colour=discord.Colour.dark_teal(),
-        url='https://google.com' # TODO: URL to play/queue the song again
-      )
-      embed.set_author(name=self.user.name, icon_url=self.user.avatar_url)
+      embed.description = '\n'.join(lines)
+      embed.colour = discord.Colour.orange()
       for ref in self.data['albumArtRef']:
         if 'url' in ref:
           embed.set_image(url=ref['url'])
           break
-
     elif self.type == SongTypes.Youtube:
-      embed = discord.Embed(description=self.data)
-
+      embed.description = str(self.data)
+      embed.colour = discord.Colour.red()
     else:
       raise RuntimeError
-
-    if state == 'loading':
-      embed.add_field(
-        name='Controls',
-        value='Loading...'
-      )
-    elif state == 'playing':
-      embed.add_field(
-        name='Controls',
-        value='[⏸](https://github.com) [⏹️](https://discordapp.com)',
-        inline=False
-      )
-    elif state == 'paused':
-      embed.add_field(
-        name='Controls',
-        value='[▶️](https://google.com) [⏹️](https://discordapp.com)',
-        inline=False
-      )
 
     return embed
 
@@ -124,7 +111,10 @@ class Song:
           shutil.copyfileobj(response, fp)
       self.stream = voice_client.create_ffmpeg_player(filename, after=after)
     elif self.type == SongTypes.Youtube:
-      self.stream = await voice_client.create_ytdl_player(self.data)
+      try:
+        self.stream = await voice_client.create_ytdl_player(self.data)
+      except youtube_dl.utils.DownloadError as e:
+        raise StreamNotCreatedError() from e
     else:
       raise RuntimeError
 
