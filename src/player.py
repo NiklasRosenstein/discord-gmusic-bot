@@ -20,7 +20,7 @@ class SongTypes(enum.Enum):
 
 class Song:
 
-  def __init__(self, type, data, user, timestamp=None, message=None, stream=None):
+  def __init__(self, type, data, user, channel, timestamp=None, message=None, stream=None):
     assert type in SongTypes
     if type == SongTypes.Gmusic:
       assert isinstance(data, dict) and 'storeId' in data, type(data)
@@ -30,6 +30,7 @@ class Song:
     self.type = type
     self.data = data
     self.user = user
+    self.channel = channel
     self.timestamp = timestamp
     self.message = message
     self.stream = stream
@@ -137,7 +138,7 @@ class PlayerFactory:
     self.logger = logger
     self.players = []
 
-  def get(self, voice_client):
+  def get_player_for_voice_client(self, voice_client):
     player = discord.utils.find(
       lambda x: x.voice_client == voice_client,
       self.players)
@@ -146,18 +147,19 @@ class PlayerFactory:
       self.players.append(player)
     return player
 
-  async def get_for_channel(self, channel):
-    # Find the existing voice client for the channel.
+  async def get_player_for_voice_channel(self, voice_channel):
+    # Find the existing voice client for the channel. We only every have
+    # one voice client per server.
     voice_client = discord.utils.find(
-      lambda x: x.server == channel.server,
+      lambda x: x.server == voice_channel.server,
       self.client.voice_clients)
-    if voice_client and voice_client.channel != channel:
-      voice_client.move_to(channel)
+    if voice_client and voice_client.channel != voice_channel:
+      voice_client.move_to(voice_channel)
     elif not voice_client:
-      voice_client = await self.client.join_voice_channel(channel)
-    return self.get(voice_client)
+      voice_client = await self.client.join_voice_channel(voice_channel)
+    return self.get_player_for_voice_client(voice_client)
 
-  async def get_for_server(self, server):
+  async def get_player_for_server(self, server):
     return discord.utils.find(
       lambda x: x.voice_client.server == server,
       self.players)
@@ -258,7 +260,7 @@ class Player:
 
     with await self.lock:
       if not song.message:
-        song.message = await self.client.say(embed=song.create_embed())
+        song.message = await self.client.send_message(song.channel, embed=song.create_embed())
       self.current_song = song
 
     after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
@@ -270,7 +272,7 @@ class Player:
       msg = '{} Something went wrong playing  **{}**.'
       msg = msg.format(song.user.mention, song.name)
       await self.client.delete_message(song.message)
-      await self.client.say(msg)
+      await self.client.send_message(song.channel, msg)
       return False
 
     song.stream.volume = self.config['general']['music_volume']
@@ -278,15 +280,15 @@ class Player:
     await self.__update_current_song_message()
     return True
 
-  async def queue_song(self, type, data, user, timestamp):
+  async def queue_song(self, type, data, user, channel, timestamp):
     with await self.lock:
-      song = Song(type, data, user, timestamp)
+      song = Song(type, data, user, channel, timestamp)
       if self.current_song:
         self.queue.append(song)
-        return 'queued'
+        return song
     if not await self.__play_song(song):
-      return 'error'
-    return 'playback'
+      return None
+    return song
 
 
 module.exports = Player

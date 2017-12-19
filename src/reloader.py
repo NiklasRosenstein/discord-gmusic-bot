@@ -52,10 +52,12 @@ class Reloader:
 
   def run_forever(self, reload_args):
     self.server = socketserver.TCPServer(('localhost', 0), self.request_handler)
+    self.server.timeout = 1.0
     self._reload_args = reload_args
     self.reload()
     try:
-      self.server.serve_forever()
+      while self._process.poll() is None:
+        self.server.handle_request()
     finally:
       self._process.terminate()
       self._process.wait()

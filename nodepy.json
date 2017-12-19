@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "authors": "rosensteinniklas@gmail.com",
   "license": "MIT",
+  "main": "src/main.py",
   "pip_dependencies": {
     "gmusicapi": ">=11.0.0",
     "discord.py": ">=0.16.12",
