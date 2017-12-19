@@ -110,7 +110,7 @@ class GMusicBot:
           self.logger.error('Exception handling command "{}"'.format(command.name))
           self.logger.exception(e)
           await self.client.send_message(message.channel, 'Internal Error')
-          if self.config['debug'].get('enabled'):
+          if self.config['general'].get('debug'):
             tb = traceback.format_exc()
             try:
               await self.client.send_message(message.channel, '(debug traceback)\n```\n{}```'.format(tb))

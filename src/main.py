@@ -16,11 +16,15 @@ def main():
     config = toml.load(fp)
 
   # Create a reloader and check if we're in the reloader's parent process.
-  reloader = Reloader()
-  if config['debug']['use_reloader'] and not reloader.is_inner():
-    argv = nodepy.runtime.exec_args + [str(module.filename)]
-    reloader.run_forever(argv)
-    return
+  reloader_enabled = config['general'].get('use_reloader', config['general'].get('debug'))
+  if reloader_enabled:
+    reloader = Reloader()
+    if not reloader.is_inner():
+      argv = nodepy.runtime.exec_args + [str(module.filename)]
+      reloader.run_forever(argv)
+      return
+  else:
+    reloader = None
 
   # Run the bot.
   bot = GMusicBot(config, reloader)
