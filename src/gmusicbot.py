@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import toml
+import traceback
 import urllib.parse
 
 import Player from './Player'
@@ -103,7 +104,19 @@ class GMusicBot:
       match = re.match('^{}(\s|$)'.format(re.escape(command.name)), content)
       if match:
         content = content[match.end():].lstrip()
-        await command.handler(self, message, content)
+        try:
+          await command.handler(self, message, content)
+        except Exception as e:
+          self.logger.error('Exception handling command "{}"'.format(command.name))
+          self.logger.exception(e)
+          await self.client.send_message(message.channel, 'Internal Error')
+          if self.config['debug'].get('enabled'):
+            tb = traceback.format_exc()
+            try:
+              await self.client.send_message(message.channel, '(debug traceback)\n```\n{}```'.format(tb))
+            except Exception as e:
+              self.logger.exception(e)
+              await self.client.send_message(message.channel, '(debug traceback too long: {})'.format(e))
         return
 
   async def get_invite_link(self):
