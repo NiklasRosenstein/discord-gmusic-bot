@@ -166,6 +166,11 @@ async def help(self, message, query):
     inline=False
   )
   embed.add_field(
+    name='comehere',
+    value="Make the bot join the Voice Channel that you're currently in.",
+    inline=False
+  )
+  embed.add_field(
     name='Invite Link for this Bot',
     value=await self.get_invite_link(),
     inline=False
@@ -203,7 +208,7 @@ async def queue(self, message, query, reply_to_user=False):
   info = urllib.parse.urlparse(url)
   if info.scheme and info.netloc and info.path:
     if 'youtu' in info.netloc:
-      player = await self.players.get_player_for_voice_channel(message.author.voice.voice_channel)
+      player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
       song = await player.queue_song(Player.YoutubeSong, url, user, message.channel, message.timestamp)
     else:
       await self.client.send_message(message.channel, 'That doesn\'t look like a Youtube URL.')
@@ -215,7 +220,7 @@ async def queue(self, message, query, reply_to_user=False):
       return
 
     song_data = results['song_hits'][0]['track']
-    player = await self.players.get_player_for_voice_channel(message.author.voice.voice_channel)
+    player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
     song = await player.queue_song(Player.GmusicSong, song_data, user, message.channel, message.timestamp)
 
   if song and not song.stream and reply_to_user:
@@ -244,7 +249,7 @@ async def play(self, message, query):
     await self.client.send_message(message.channel, '{} Join a voice channel, first.'.format(message.author.mention))
     return
 
-  player = await self.players.get_player_for_voice_channel(message.author.voice.voice_channel)
+  player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
   if query:
     await queue(self, message, query, reply_to_user=True)
     return
@@ -292,6 +297,17 @@ async def reload(self, message, arg):
     await self.client.send_message(message.channel, 'Not inside the reloaded process. OMG')
   else:
     self.reloader.send_reload()
+
+
+@GMusicBot.command()
+async def comehere(self, message, arg):
+  voice_channel = message.author.voice.voice_channel
+  if not voice_channel:
+    await self.client.send_message(message.channel, '{} Join a Voice Channel first!'.format(message.author.mention))
+  else:
+    player = await self.players.get_player_for_server(message.server, voice_channel)
+    if player.voice_client.channel != voice_channel:
+      await player.voice_client.move_to(voice_channel)
 
 
 @GMusicBot.command()

@@ -18,6 +18,7 @@ __To do__
 * Understand exclamation mark in `play <query>!` to immediately play the song
 * Add commands to remove/reorder items in the queue
 
+
 ### Usage
 
 If you have a text-channel where the topic contains the string
@@ -27,6 +28,7 @@ other channel, you will need to mention the bot first.
 Send `help` to get a list of available commands.
 
 ![](https://i.imgur.com/1HFDCmY.png)
+
 
 ### Requirements
 

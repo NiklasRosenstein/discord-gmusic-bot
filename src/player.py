@@ -129,6 +129,13 @@ class PlayerFactory:
     self.players = []
 
   def get_player_for_voice_client(self, voice_client):
+    """
+    This is a normal function.
+
+    Returns the #Player for a given #discord.VoiceClient *voice_client*.
+    Creates a new #Player if none exists.
+    """
+
     player = discord.utils.find(
       lambda x: x.voice_client == voice_client,
       self.players)
@@ -137,22 +144,25 @@ class PlayerFactory:
       self.players.append(player)
     return player
 
-  async def get_player_for_voice_channel(self, voice_channel):
-    # Find the existing voice client for the channel. We only every have
-    # one voice client per server.
-    voice_client = discord.utils.find(
-      lambda x: x.server == voice_channel.server,
-      self.client.voice_clients)
-    if voice_client and voice_client.channel != voice_channel:
-      voice_client.move_to(voice_channel)
-    elif not voice_client:
-      voice_client = await self.client.join_voice_channel(voice_channel)
-    return self.get_player_for_voice_client(voice_client)
+  async def get_player_for_server(self, server, voice_channel=None):
+    """
+    This is a coroutine function.
 
-  async def get_player_for_server(self, server):
-    return discord.utils.find(
+    Searches for the #Player for the server *server*. If the server currently
+    has no #Player, #None is returned, unless a *voice_channel* is specified,
+    in which case a #Player is created for that channel.
+
+    The player is not automatically moved to the specified *voice_channel*
+    if it already exists. Use #Player.voice_client.move_to() instead.
+    """
+
+    player = discord.utils.find(
       lambda x: x.voice_client.server == server,
       self.players)
+    if voice_channel and not player:
+      voice_client = await self.client.join_voice_channel(voice_channel)
+      player = self.get_player_for_voice_client(voice_client)
+    return player
 
 
 class Player:
