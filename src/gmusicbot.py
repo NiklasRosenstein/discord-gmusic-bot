@@ -17,7 +17,7 @@ import toml
 import traceback
 import urllib.parse
 
-import Player from './Player'
+import Player from './player'
 
 
 def async_partial(func, *pargs, **pkwargs):
