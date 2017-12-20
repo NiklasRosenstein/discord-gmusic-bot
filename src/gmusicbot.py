@@ -90,10 +90,10 @@ class GMusicBot:
     return 0
 
   def check_command_prefix(self, message):
-    if message.channel.topic and 'discord-gmusic-bot' in message.channel.topic:
-      return ''
-    else:
-      return self.client.user.mention
+    if message.channel.type == discord.ChannelType.text:
+      if message.channel.topic and 'discord-gmusic-bot' in message.channel.topic:
+        return ''
+    return self.client.user.mention
 
   async def on_message(self, message):
     prefix = self.check_command_prefix(message)
