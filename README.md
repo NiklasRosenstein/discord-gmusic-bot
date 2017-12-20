@@ -20,6 +20,8 @@ __To do__
 * Support YouTube and Google Music Playlists
 * Understand exclamation mark in `play <query>!` to immediately play the song
 * Add commands to remove/reorder items in the queue
+* Maybe use [tizonia](https://github.com/tizonia/tizonia-openmax-il) as the
+  music streaming backend
 
 
 ### Usage
