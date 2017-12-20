@@ -13,6 +13,9 @@ __To do__
     >
     >     [mp3 @ 0000000000d62340] invalid concatenated file detected - using bitrate for duration
 
+* Automatically play the next title after a Youtube song ends ("Failed to
+  send close message" might be related to that)
+* Ability to bulk-queue songs (eg. from a YouTube playlist or multiple links)
 * Read out YouTube Video Title
 * Support YouTube and Google Music Playlists
 * Understand exclamation mark in `play <query>!` to immediately play the song
