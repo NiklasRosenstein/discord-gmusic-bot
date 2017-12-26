@@ -1,15 +1,15 @@
-FROM heroku/heroku:16-build
+FROM ubuntu:16.04
+
+ENV LANG C.UTF-8
+
+RUN apt-get update > /dev/null
+RUN apt-get install -y libopus-dev libssl-dev ffmpeg > /dev/null
+RUN apt-get install -y python3 python3-pip > /dev/null
+RUN apt-get install -y git > /dev/null
+RUN pip3 install git+https://github.com/nodepy/nodepy.git@develop > /dev/null
+RUN nodepy https://nodepy.org/install-pm.py develop
 
 WORKDIR /app
-COPY . ./
-
-ENV BUILDPACK_URL=https://github.com/nodepy/nodepy-buildpack
-ENV BUILD_DIR=/app
-ENV CACHE_DIR=/app-cache
-ENV ENV_DIR=/app-env
-
-RUN apt-get update && apt-get install -y libopus-dev libssl-dev ffmpeg
-RUN /bin/bash -c 'git clone $BUILDPACK_URL /buildpack'
-RUN /bin/bash -c '/buildpack/bin/compile $BUILD_DIR $CACHE_DIR $ENV_DIR'
-
-ENV PATH="/app/.heroku/python/bin:.nodepy/bin:${PATH}"
+COPY . .
+RUN nodepy-pm install
+ENTRYPOINT nodepy .

@@ -2,7 +2,31 @@
 
 A Discord bot that plays music via Google Play Music or Youtube.
 
-__To do__
+### Usage
+
+Either mention `@discord-gmusic-bot` or create a separate channel that
+contains the string `discord-gmusic-bot` in its title to talk to the bot.
+Send `help` to get a list of available commands.
+
+<p align="center">
+  <img src="https://i.imgur.com/1HFDCmY.png"/>
+<p>
+
+### Get Started
+
+    $ cp config.example.toml config.toml && $(EDITOR) config.toml
+    $ docker build . -t discord-gmusic-bot
+    $ docker run discord-gmusic-bot
+    [...]
+    INFO:discord-gmusic-bot:        https://discordapp.com/oauth2/authorize?client_id=282709421955576523&scope=bot&permissions=3148800
+
+### Requirements
+
+1. Your [own Discord bot](https://discordapp.com/developers/applications/me/create)
+2. Make sure to promote the Bot to a "Bot User"
+3. A Google Music Account plus an [app specific password](https://myaccount.google.com/apppasswords)
+
+### To do
 
 * Stream audio from GMusic instead of caching files into the `song_cache/` directory?
 
@@ -22,83 +46,6 @@ __To do__
 * Add commands to remove/reorder items in the queue
 * Maybe use [tizonia](https://github.com/tizonia/tizonia-openmax-il) as the
   music streaming backend
-
-
-### Usage
-
-If you have a text-channel where the topic contains the string
-`discord-gmusic-bot`, any message is considered a command for the bot. In any
-other channel, you will need to mention the bot first.
-
-Send `help` to get a list of available commands.
-
-![](https://i.imgur.com/1HFDCmY.png)
-
-
-### Requirements
-
-__Discord Permissions__ (`3148800`)
-
-* Text : Read Messages
-* Text : Send Messages
-* Voice : View Channel
-* Voice : Connect
-* Voice : Speak
-
-__Software/Libraries__
-
-* CPython 3
-* ffmpeg
-* libopus
-
-__Google Music Account + App-specific password__
-
-This can be done under https://myaccount.google.com/apppasswords and is
-necessary for accounts secured by two-factor authentication, yet still
-recommended in general.
-
-
-### Installation
-
-  [Dokku]: https://github.com/dokku/dokku
-
-You can deploy the bot with [Dokku], or install and run it like this:
-
-    $ pip3 install nodepy-runtime
-    $ nodepy https://nodepy.org/install-pm.py
-    $ git clone https://github.com/NiklasRosenstein/discord-music-bot.git
-    $ cd discord-music-bot
-    $ cp config.example.toml config.toml
-    $ $(EDITOR) config.toml
-    $ nodepy-pm install
-    $ nodepy .
-
-You should see a URL that allows you to add the bot to your server printed
-in the console. Press CTRL+C to stop the bot. *Note: The discord API or the
-asyncio module in Python seem to have a long delay from you pressing CTRL+C
-and raising a KeyboardInterrupt exception.*
-
-
-### Installation (Windows Appendix)
-
-__libopus__
-
-On Windows, Discord.py comes with a version of `libopus-0.x86.dll` and
-`libopus-0.x64.dll`, so you only need to use the right name depending on your
-Python version in `config.toml`.
-
-Alternatively, you can download a Windows opus build from the [Opus download]
-page for Windows x86 or from the [craftr-libopus] repository for Windows x64.
-
-  [craftr-libopus]: https://github.com/NiklasRosenstein/craftr-libopus/releases
-  [Installing libopus]: https://github.com/meew0/discordrb/wiki/Installing-libopus
-  [Opus download]: http://opus-codec.org/downloads/
-
-__ffmpeg__
-
-FFmpeg must be in your `PATH` in order to stream music to the Discord bot.
-Windows builds can be found [here](https://www.ffmpeg.org/download.html).
-
 
 ### Useful Tools
 
