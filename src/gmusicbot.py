@@ -201,18 +201,10 @@ async def queue(self, message, query, reply_to_user=False):
     player = await self.players.get_player_for_server(user.server)
     embed = discord.Embed()
     for song in (player.queue if player else []):
-      if song.type == Player.GmusicSong:
-        embed.add_field(
-          name='{} - {}'.format(song.data['title'], song.data['artist']),
-          value='added by {}'.format(song.user.mention),
-          inline=False
-        )
-      elif song.type == Player.YoutubeSong:
-        embed.add_field(
-          name=song.name,
-          value='added by {}'.format(song.user.mention),
-          inline=False
-        )
+      value = 'added by {}'.format(song.user.mention)
+      if song.type == Player.YoutubeSong:
+        value += ' ({})'.format(song.url)
+      embed.add_field(name=song.name, value=value, inline=False)
     await self.client.send_message(message.channel, embed=embed)
     return
 

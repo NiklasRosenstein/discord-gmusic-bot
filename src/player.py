@@ -21,35 +21,56 @@ class SongTypes(enum.Enum):
 
 class Song:
 
-  def __init__(self, type, data, user, channel, timestamp=None, message=None, stream=None):
-    assert type in SongTypes
+  def __init__(self, type, data, user, channel, timestamp=None, message=None):
+    self.type = type
     if type == SongTypes.Gmusic:
       assert isinstance(data, dict) and 'storeId' in data, type(data)
+      self.title = data['title']
+      self.artist = data['artist']
+      self.album = data['album']
+      self.genre = data['genre']
+      self.image = None
+      self.song_id = data['storeId']
+      self.gmusic_data = data
+
+      for ref in data['albumArtRef']:
+        if 'url' in ref:
+          self.image = ref['url']
+          break
+
     elif type == SongTypes.Youtube:
       assert isinstance(data, str), type(data)
+      self.title = None
+      self.artist = None
+      self.album = None
+      self.genre = None
+      self.image = None
+      self.url = data
+
+    else:
+      raise ValueError('invalid song type: {!r}'.format(type))
+
     assert isinstance(user, discord.User), type(user)
-    self.type = type
-    self.data = data
     self.user = user
     self.channel = channel
     self.timestamp = timestamp
     self.message = message
-    self.stream = stream
+    self.stream = None
 
   def __repr__(self):
     return '<Song type={!r} user={!r}>'.format(self.type, self.user.name)
 
   @property
   def name(self):
-    if self.type == SongTypes.Gmusic:
-      return '{} - {}'.format(self.data['title'], self.data['artist'])
-    elif self.type == SongTypes.Youtube:
-      if self.stream:
-        return self.stream.title
-      else:
-        return '<{}>'.format(self.data)  # <> disables auto embed
-    else:
-      raise RuntimeError
+    result = self.title or ''
+    if self.artist:
+      result += ' by {}'.format(self.artist)
+    if not result:
+      if self.type == SongTypes.Gmusic:
+        result = self.song_id
+      elif self.type == SongTypes.Youtube:
+        result = self.url
+    return result
 
   def create_embed(self):
     if self.stream and self.stream.is_playing():
@@ -73,32 +94,27 @@ class Song:
 
     if self.type == SongTypes.Gmusic:
       lines = []
-      lines.append('**Title** — {}'.format(self.data['title']))
-      lines.append('**Artist** — {}'.format(self.data['artist']))
-      lines.append('**Album** — {}'.format(self.data['album']))
-      lines.append('**Genre** — {}'.format(self.data['genre']))
+      lines.append('**Title** — {}'.format(self.title))
+      lines.append('**Artist** — {}'.format(self.artist))
+      lines.append('**Album** — {}'.format(self.album))
+      lines.append('**Genre** — {}'.format(self.genre))
       embed.description = '\n'.join(lines)
       embed.colour = discord.Colour.orange()
-      for ref in self.data['albumArtRef']:
-        if 'url' in ref:
-          embed.set_image(url=ref['url'])
-          break
     elif self.type == SongTypes.Youtube:
-      if self.stream:
-        embed.description = self.stream.title
-      else:
-        embed.description = str(self.data)
+      embed.description = self.title or self.url
       embed.colour = discord.Colour.red()
     else:
       raise RuntimeError
 
+    if self.image:
+      embed.set_image(url=self.image)
     return embed
 
   async def create_stream(self, config, gmusic, voice_client, after=None):
     if self.stream:
       raise RuntimeError('Song already has a stream')
     if self.type == SongTypes.Gmusic:
-      song_id = self.data['storeId']
+      song_id = self.song_id
       os.makedirs(config['general']['cache_dir'], exist_ok=True)
       filename = os.path.join(config['general']['cache_dir'], song_id + '.mp3')
       if not os.path.isfile(filename):
@@ -115,11 +131,21 @@ class Song:
       self.stream = voice_client.create_ffmpeg_player(filename, after=after)
     elif self.type == SongTypes.Youtube:
       try:
-        self.stream = await voice_client.create_ytdl_player(self.data)
+        self.stream = await voice_client.create_ytdl_player(self.url)
       except youtube_dl.utils.DownloadError as e:
         raise StreamNotCreatedError() from e
     else:
       raise RuntimeError
+
+  async def pull_metadata(self):
+    if self.type == SongTypes.Youtube:
+      # TODO: Actually do stuff asynchronous here.
+      ytdl = youtube_dl.YoutubeDL()
+      data = ytdl.extract_info(self.url, download=False)
+      self.title = data['title']
+      self.image = data['thumbnail']
+      self.artist = data['uploader']
+      self.genre = next(iter(data.get('categories', [])), None)
 
 
 class PlayerFactory:
@@ -286,6 +312,7 @@ class Player:
   async def queue_song(self, type, data, user, channel, timestamp):
     with await self.lock:
       song = Song(type, data, user, channel, timestamp)
+      await song.pull_metadata()
       if self.current_song:
         self.queue.append(song)
         return song
