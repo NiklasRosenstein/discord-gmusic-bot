@@ -28,10 +28,7 @@ Send `help` to get a list of available commands.
 
 ### To do
 
-* Automatically play the next title after a Youtube song ends ("Failed to
-  send close message" might be related to that)
 * Ability to bulk-queue songs (eg. from a YouTube playlist or multiple links)
-* Read out YouTube Video Title
 * Support YouTube and Google Music Playlists
 * Understand exclamation mark in `play <query>!` to immediately play the song
 * Add commands to remove/reorder items in the queue
