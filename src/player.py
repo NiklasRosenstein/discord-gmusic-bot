@@ -84,7 +84,10 @@ class Song:
           embed.set_image(url=ref['url'])
           break
     elif self.type == SongTypes.Youtube:
-      embed.description = str(self.data)
+      if self.stream:
+        embed.description = self.stream.title
+      else:
+        embed.description = str(self.data)
       embed.colour = discord.Colour.red()
     else:
       raise RuntimeError
