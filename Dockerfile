@@ -10,6 +10,8 @@ RUN pip3 install git+https://github.com/nodepy/nodepy.git@develop > /dev/null
 RUN nodepy https://nodepy.org/install-pm.py develop
 
 WORKDIR /app
-COPY . .
+COPY nodepy.json nodepy.json
 RUN nodepy-pm install
+
+COPY . .
 ENTRYPOINT nodepy .
