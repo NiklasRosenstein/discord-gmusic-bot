@@ -114,24 +114,14 @@ class Song:
     if self.stream:
       raise RuntimeError('Song already has a stream')
     if self.type == SongTypes.Gmusic:
-      song_id = self.song_id
-      os.makedirs(config['general']['cache_dir'], exist_ok=True)
-      filename = os.path.join(config['general']['cache_dir'], song_id + '.mp3')
-      if not os.path.isfile(filename):
-        try:
-          url = gmusic.get_stream_url(song_id)
-        except gmusicapi.exceptions.CallFailure as e:
-          raise StreamNotCreatedError() from e
-        try:
-          response = urllib.request.urlopen(url)
-        except (urllib.error.URLError, urllib.error.HTTPError) as e:
-          raise StreamNotCreatedError() from e
-        with open(filename, 'wb') as fp:
-          shutil.copyfileobj(response, fp)
-      self.stream = voice_client.create_ffmpeg_player(filename, after=after)
+      try:
+        url = gmusic.get_stream_url(self.song_id)
+      except gmusicapi.exceptions.CallFailure as e:
+        raise StreamNotCreatedError() from e
+      self.stream = voice_client.create_ffmpeg_player(url, after=after)
     elif self.type == SongTypes.Youtube:
       try:
-        self.stream = await voice_client.create_ytdl_player(self.url)
+        self.stream = await voice_client.create_ytdl_player(self.url, after=after)
       except youtube_dl.utils.DownloadError as e:
         raise StreamNotCreatedError() from e
     else:

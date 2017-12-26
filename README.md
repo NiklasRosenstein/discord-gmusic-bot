@@ -28,15 +28,6 @@ Send `help` to get a list of available commands.
 
 ### To do
 
-* Stream audio from GMusic instead of caching files into the `song_cache/` directory?
-
-    > Streaming the HTTPResponse into `create_ffmpeg_player()` (using a `os.pipe()`)
-    > gives an ffmpeg warning, probably because the file size can not be determined.
-    > It seems that the file size can not be properly determined, isn't played
-    > for it's whole duration.
-    >
-    >     [mp3 @ 0000000000d62340] invalid concatenated file detected - using bitrate for duration
-
 * Automatically play the next title after a Youtube song ends ("Failed to
   send close message" might be related to that)
 * Ability to bulk-queue songs (eg. from a YouTube playlist or multiple links)
