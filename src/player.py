@@ -46,15 +46,17 @@ class Song:
       self.album = None
       self.genre = None
       self.image = None
+      self.url = data
 
       # Normalize the Youtube video URL. This will ensure that we extract
       # the video ID also from video URLs that point to a video in a
       # playlist.
       info = urllib.parse.urlparse(data)
-      query = urllib.parse.parse_qs(info.query)
-      if not query.get('v'):
-        raise ValueError('Invalid Youtube video URL: {!r}'.format(data))
-      self.url = 'https://youtu.be/' + query['v'][0]
+      if info.netloc != 'youtu.be':
+        query = urllib.parse.parse_qs(info.query)
+        if not query.get('v'):
+          raise ValueError('Invalid Youtube video URL: {!r}'.format(data))
+        self.url = 'https://youtu.be/' + query['v'][0]
 
     else:
       raise ValueError('invalid song type: {!r}'.format(type))
