@@ -1,11 +1,13 @@
 
 import logging
-import toml
 import nodepy.runtime
+import os
 import sys
+import toml
 
 import Reloader from './reloader'
 import GMusicBot from './gmusicbot'
+import models from './models'
 
 
 def main():
@@ -25,6 +27,12 @@ def main():
       return
   else:
     reloader = None
+
+  # Connect to the database.
+  if 'filename' in config['database']:
+    config['database']['filename'] = os.path.abspath(config['database']['filename'])
+  models.db.bind(**config['database'])
+  models.db.generate_mapping(create_tables=True)
 
   # Run the bot.
   bot = GMusicBot(config, reloader)

@@ -22,10 +22,13 @@ class SongTypes(enum.Enum):
 
 class Song:
 
-  def __init__(self, type, data, user, channel, timestamp=None, message=None):
+  def __init__(self, type, data, user, channel, timestamp=None, message=None, gmusic=None):
     self.type = type
     if type == SongTypes.Gmusic:
       assert isinstance(data, dict) and 'storeId' in data, type(data)
+      if not gmusic:
+        raise ValueError('Need a gmusic Client for a GMusic song')
+
       self.title = data['title']
       self.artist = data['artist']
       self.album = data['album']
@@ -33,6 +36,7 @@ class Song:
       self.image = None
       self.song_id = data['storeId']
       self.gmusic_data = data
+      self.gmusic = gmusic
 
       for ref in data['albumArtRef']:
         if 'url' in ref:
@@ -51,11 +55,11 @@ class Song:
       # Normalize the Youtube video URL. This will ensure that we extract
       # the video ID also from video URLs that point to a video in a
       # playlist.
-      info = urllib.parse.urlparse(data)
+      info = urllib.parse.urlparse(self.url)
       if info.netloc != 'youtu.be':
         query = urllib.parse.parse_qs(info.query)
         if not query.get('v'):
-          raise ValueError('Invalid Youtube video URL: {!r}'.format(data))
+          raise ValueError('Invalid Youtube video URL: {!r}'.format(self.url))
         self.url = 'https://youtu.be/' + query['v'][0]
 
     else:
@@ -121,12 +125,12 @@ class Song:
       embed.set_image(url=self.image)
     return embed
 
-  async def create_stream(self, config, gmusic, voice_client, after=None):
+  async def create_stream(self, config, voice_client, after=None):
     if self.stream:
       raise RuntimeError('Song already has a stream')
     if self.type == SongTypes.Gmusic:
       try:
-        url = gmusic.get_stream_url(self.song_id)
+        url = self.gmusic.get_stream_url(self.song_id)
       except gmusicapi.exceptions.CallFailure as e:
         raise StreamNotCreatedError() from e
       self.stream = voice_client.create_ffmpeg_player(url, after=after)
@@ -151,9 +155,8 @@ class Song:
 
 class PlayerFactory:
 
-  def __init__(self, client, gmusic, config, logger):
+  def __init__(self, client, config, logger):
     self.client = client
-    self.gmusic = gmusic
     self.config = config
     self.logger = logger
     self.players = []
@@ -170,7 +173,7 @@ class PlayerFactory:
       lambda x: x.voice_client == voice_client,
       self.players)
     if player is None:
-      player = Player(self.client, self.gmusic, self.config, self.logger, voice_client)
+      player = Player(self.client, self.config, self.logger, voice_client)
       self.players.append(player)
     return player
 
@@ -204,10 +207,9 @@ class Player:
   GmusicSong = SongTypes.Gmusic
   YoutubeSong = SongTypes.Youtube
 
-  def __init__(self, client, gmusic, config, logger, voice_client):
+  def __init__(self, client, config, logger, voice_client):
     self.client = client
     self.loop = client.loop
-    self.gmusic = gmusic
     self.config = config
     self.logger = logger
     self.voice_client = voice_client
@@ -295,7 +297,7 @@ class Player:
 
     after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
     try:
-      await song.create_stream(self.config, self.gmusic, self.voice_client, after)
+      await song.create_stream(self.config, self.voice_client, after)
     except StreamNotCreatedError as exc:
       self.logger.exception(exc)
       self.current_song = None
@@ -310,9 +312,9 @@ class Player:
     await self.__update_current_song_message()
     return True
 
-  async def queue_song(self, type, data, user, channel, timestamp):
+  async def queue_song(self, type, data, user, channel, timestamp, gmusic=None):
     with await self.lock:
-      song = Song(type, data, user, channel, timestamp)
+      song = Song(type, data, user, channel, timestamp, gmusic=gmusic)
       await song.pull_metadata()
       if self.current_song:
         self.queue.append(song)

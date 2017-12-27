@@ -17,6 +17,7 @@ import toml
 import traceback
 import urllib.parse
 
+import models from './models'
 import Player from './player'
 
 with module.package.directory.joinpath('resources/thanks.txt').open() as fp:
@@ -54,20 +55,11 @@ class GMusicBot:
     self.logger = logging.getLogger('discord-gmusic-bot')
     self.logger.setLevel(logging.INFO)
     self.client = None
-    self.gmusic = gmusicapi.Mobileclient(debug_logging=False)
     self.reloader = reloader
     self.config = config
-    self.players = Player.Factory(self.client, self.gmusic, self.config, self.logger)
+    self.players = Player.Factory(self.client, self.config, self.logger)
 
   def run(self):
-    # Log-in to the Google Music API.
-    if not self.gmusic.login(
-        self.config['gmusic']['username'],
-        self.config['gmusic']['password'],
-        gmusicapi.Mobileclient.FROM_MAC_ADDRESS):
-      self.logger.error('Unable to authenticate with Google Play Music.')
-      return 1
-
     if not discord.opus.is_loaded():
       self.logger.error('Opus not loaded.')
       return 1
@@ -120,6 +112,21 @@ class GMusicBot:
   async def get_invite_link(self):
     client_id = (await self.client.application_info()).id
     return self.config['discord']['add_bot_url'].format(CLIENT_ID=client_id)
+
+
+async def get_gmusic_client(client, channel, server):
+  with models.session:
+    guild = models.Server.get(id=server.id)
+    if not guild or not guild.gmusic_credentials:
+      if channel:
+        await client.send_message(channel, 'Please set-up the Google Music credentials for this server.')
+      return None
+    gmusic = guild.gmusic_credentials.get_gmusic_client()
+    if not gmusic:
+      if channel:
+        await client.send_message(channel, 'There was a problem connecting to Google Music with the specified credentials.')
+      return None
+    return gmusic
 
 
 @GMusicBot.command()
@@ -217,14 +224,17 @@ async def queue(self, message, query, reply_to_user=False):
       await self.client.send_message(message.channel, 'That doesn\'t look like a Youtube URL.')
       return
   else:
-    results = self.gmusic.search(query, max_results=10)
+    gmusic = await get_gmusic_client(self.client, message.channel, message.server)
+    if not gmusic:
+      return
+    results = gmusic.search(query, max_results=10)
     if not results['song_hits']:
       await self.client.send_message(message.channel, '{} Sorry, seems like Google Music sucks.'.format(user.mention))
       return
 
     song_data = results['song_hits'][0]['track']
     player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
-    song = await player.queue_song(Player.GmusicSong, song_data, user, message.channel, message.timestamp)
+    song = await player.queue_song(Player.GmusicSong, song_data, user, message.channel, message.timestamp, gmusic=gmusic)
 
   if song and not song.stream and reply_to_user:
     await self.client.send_message(message.channel, '{} I\'ve added **{}** to the queue.'.format(user.mention, song.name))
@@ -234,7 +244,10 @@ async def queue(self, message, query, reply_to_user=False):
 async def search(self, message, query):
   user = message.author
   await self.client.send_typing(message.channel)
-  results = self.gmusic.search(query, max_results=10)
+  gmusic = await get_gmusic_client(self.client, message.channel, message.server)
+  if not gmusic:
+    return
+  results = gmusic.search(query, max_results=10)
   embed = discord.Embed(title='Results for {}'.format(query))
   for song in results['song_hits']:
     song = song['track']
@@ -261,8 +274,11 @@ async def play(self, message, query):
   await self.client.send_typing(message.channel)
   if not await player.has_current_song() and not player.queue:
     await self.client.send_message(message.channel, '{} Playing a random song.'.format(user.mention))
-    song = random.choice(self.gmusic.get_promoted_songs())
-    await player.queue_song(Player.GmusicSong, song, user, message.channel, message.timestamp)
+    gmusic = get_gmusic_client(self.client, message.channel, message.server)
+    if not gmusic:
+      return
+    song = random.choice(gmusic.get_promoted_songs())
+    await player.queue_song(Player.GmusicSong, song, user, message.channel, message.timestamp, gmusic=gmusic)
     await player.resume()
   elif not await player.is_playing():
     await player.resume()
@@ -319,6 +335,64 @@ async def thanks(self, message, arg):
   embed = discord.Embed()
   embed.set_image(url=url)
   await self.client.send_message(message.channel, embed=embed)
+
+
+@GMusicBot.command(name='config')
+async def config(self, message, arg):
+  user = message.author
+  if arg == 'google-music':
+    private_channel = await self.client.start_private_message(user)
+    await self.client.send_message(private_channel, '**Configuring Google Music credentials for server {} (`{}`)**'.format(message.server.name, message.server.id))
+    gmusic = await get_gmusic_client(self.client, None, message.server)
+    if gmusic:
+      await self.client.send_message(private_channel, 'You already have valid Google Music credentials configured. Do you want to overwrite them?')
+      msg = await self.client.wait_for_message(author=user, channel=private_channel, timeout=10.0)
+      if not msg:
+        await self.client.send_message(private_channel, 'No response -- Aborted.')
+        return
+      if msg.content.strip().lower() not in 'yes':
+        await self.client.send_message(private_channel, 'Aborted.')
+        return
+    await self.client.send_message(private_channel, 'Please send me your Google Music E-Mail address and your app specific password in the format `email:password`.')
+    await self.client.send_message(private_channel, 'You can create an app specific password here: https://myaccount.google.com/apppasswords')
+    await self.client.send_message(private_channel, 'Say "abort" to abort this process. Say "drop" to remove existing credentials.')
+    while True:
+      msg = await self.client.wait_for_message(author=user, channel=private_channel, timeout=10.0)
+      if not msg:
+        await self.client.send_message(private_channel, 'No response -- Aborted.')
+        return
+      if msg.content.strip().lower() == 'abort':
+        await self.client.send_message(private_channel, 'Aborted.')
+        return
+      if msg.content.strip().lower() == 'drop':
+        with models.session:
+          server = models.Server.get_or_create(id=message.server.id)
+          if server.gmusic_credentials:
+            server.gmusic_credentials.delete()
+            await self.client.send_message(private_channel, 'Google Music credentials dropped.')
+          else:
+            await self.client.send_message(private_channel, 'No Google Music credentials configured.')
+        return
+      if ':' not in msg.content:
+        await self.client.send_message(private_channel, 'I did not recognize this message as credentials. Please format them as `email:password` with no additional spaces.')
+        continue
+      break
+    email, passwd = msg.content.split(':', 1)
+    with models.session:
+      server = models.Server.get_or_create(id=message.server.id)
+      if server.gmusic_credentials:
+        server.gmusic_credentials.delete()
+      server.gmusic_credentials = models.GMusicCredentials(server=server, username=email, password=passwd)
+      client = server.gmusic_credentials.get_gmusic_client()
+      if not client:
+        await self.client.send_message(private_channel, 'Unable to log-in to Google Music with these credentials.')
+        models.rollback()
+        return
+    await self.client.send_message(private_channel, 'Alright, Google Music credentials have been configured.')
+    return
+  else:
+    await self.client.send_message(message.channel, '{} unsupported config target'.format(user.mention))
+    return
 
 
 @GMusicBot.event

@@ -8,6 +8,7 @@ debug = false
 token = "..."
 add_bot_url = "https://discordapp.com/oauth2/authorize?client_id={CLIENT_ID}&scope=bot&permissions=3148800"
 
-[gmusic]
-username = "me@gmail.com"
-password = "apppassword"
+[database]
+provider = "sqlite"
+filename = "data/db.sqlite"
+create_db = true
