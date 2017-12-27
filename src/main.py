@@ -9,7 +9,7 @@ import GMusicBot from './gmusicbot'
 
 
 def main():
-  logging.basicConfig(level=logging.INFO)
+  logging.basicConfig(level=logging.INFO, format='[%(asctime)s - %(levelname)s]: %(message)s')
 
   # Load the configuration file.
   with module.package.directory.joinpath('config.toml').open() as fp:
