@@ -7,7 +7,7 @@ import gmusicapi
 import os
 import re
 import shutil
-import urllib.request
+import urllib.request, urllib.parse
 import youtube_dl
 
 
@@ -46,11 +46,15 @@ class Song:
       self.album = None
       self.genre = None
       self.image = None
-      self.url = data
 
-      # Normalize the Youtube song URL, to allow pasting songs from the
-      # a playlist URL and at least be able to queue the current video.
-      self.url = re.sub(r'^.+youtube\.[^/]+/.+[?&]v=([^?&]+).+$', 'https://youtu.be/\\1', self.url, flags=re.I)
+      # Normalize the Youtube video URL. This will ensure that we extract
+      # the video ID also from video URLs that point to a video in a
+      # playlist.
+      info = urllib.parse.urlparse(data)
+      query = urllib.parse.parse_qs(info.query)
+      if not query.get('v'):
+        raise ValueError('Invalid Youtube video URL: {!r}'.format(data))
+      self.url = 'https://youtu.be/' + query['v'][0]
 
     else:
       raise ValueError('invalid song type: {!r}'.format(type))
