@@ -299,7 +299,7 @@ async def skip(self, message, arg):
 
 @GMusicBot.command()
 async def reload(self, message, arg):
-  if not self.config['debug']['use_reloader']:
+  if not self.config['general'].get('debug'):
     await self.client.send_message(message.channel, 'Reloading is disabled.')
   elif not self.reloader.is_inner():
     await self.client.send_message(message.channel, 'Not inside the reloaded process. OMG')
