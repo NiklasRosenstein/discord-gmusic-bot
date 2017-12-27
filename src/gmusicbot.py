@@ -189,6 +189,16 @@ async def help(self, message, query):
     inline=False
   )
   embed.add_field(
+    name='leave',
+    value="Make the bot leave the voice channel.",
+    inline=False
+  )
+  embed.add_field(
+    name='config google-music',
+    value="Starts a private chat with you to configure Google Music credentials.",
+    inline=False
+  )
+  embed.add_field(
     name='Invite Link for this Bot',
     value=await self.get_invite_link(),
     inline=False
@@ -327,6 +337,20 @@ async def comehere(self, message, arg):
     player = await self.players.get_player_for_server(message.server, voice_channel)
     if player.voice_client.channel != voice_channel:
       await player.voice_client.move_to(voice_channel)
+
+
+@GMusicBot.command()
+async def leave(self, message, arg):
+  voice_channel = message.author.voice.voice_channel
+  if voice_channel:
+    player = await self.players.get_player_for_server(message.server, voice_channel)
+  if not voice_channel or player.voice_client.channel != voice_channel:
+    await self.client.send_message(message.channel, '{} You have to be in the same voice channel to make me leave.'.format(message.author.mention))
+    return
+  if player:
+    await self.client.send_message(message.channel, 'Fine ... (ಥ﹏ಥ)')
+    await player.stop()
+    await player.disconnect()
 
 
 @GMusicBot.command()

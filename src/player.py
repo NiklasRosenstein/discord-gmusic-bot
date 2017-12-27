@@ -173,7 +173,7 @@ class PlayerFactory:
       lambda x: x.voice_client == voice_client,
       self.players)
     if player is None:
-      player = Player(self.client, self.config, self.logger, voice_client)
+      player = Player(self.client, self.config, self.logger, voice_client, self)
       self.players.append(player)
     return player
 
@@ -207,7 +207,7 @@ class Player:
   GmusicSong = SongTypes.Gmusic
   YoutubeSong = SongTypes.Youtube
 
-  def __init__(self, client, config, logger, voice_client):
+  def __init__(self, client, config, logger, voice_client, factory):
     self.client = client
     self.loop = client.loop
     self.config = config
@@ -216,6 +216,7 @@ class Player:
     self.lock = asyncio.Lock()
     self.current_song = None
     self.process_queue = True
+    self.factory = factory
     self.queue = []
 
   @property
@@ -262,6 +263,12 @@ class Player:
     with await self.lock:
       self.process_queue = True
     await self.__kill_stream()
+
+  async def disconnect(self):
+    if self.voice_client:
+      await self.voice_client.disconnect()
+    self.voice_client = None
+    self.factory.players.remove(self)
 
   async def __update_current_song_message(self):
     if self.current_song and self.current_song.message:
