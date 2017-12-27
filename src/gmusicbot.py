@@ -19,6 +19,9 @@ import urllib.parse
 
 import Player from './player'
 
+with module.package.directory.joinpath('resources/thanks.txt').open() as fp:
+  thanks_urls = list([x.split(',')[1] for x in fp if x.strip()])
+
 
 def async_partial(func, *pargs, **pkwargs):
   assert asyncio.iscoroutinefunction(func), func
@@ -55,9 +58,6 @@ class GMusicBot:
     self.reloader = reloader
     self.config = config
     self.players = Player.Factory(self.client, self.gmusic, self.config, self.logger)
-
-    with module.package.directory.joinpath('resources/thanks.txt').open() as fp:
-      thanks_urls = list([x.split(',')[1] for x in fp if x.strip()])
 
   def run(self):
     # Log-in to the Google Music API.

@@ -5,8 +5,9 @@ import discord
 import enum
 import gmusicapi
 import os
-import urllib.request
+import re
 import shutil
+import urllib.request
 import youtube_dl
 
 
@@ -46,6 +47,10 @@ class Song:
       self.genre = None
       self.image = None
       self.url = data
+
+      # Normalize the Youtube song URL, to allow pasting songs from the
+      # a playlist URL and at least be able to queue the current video.
+      self.url = re.sub(r'^.+youtube\.[^/]+/.+[?&]v=([^?&]+).+$', 'https://youtu.be/\\1', self.url, flags=re.I)
 
     else:
       raise ValueError('invalid song type: {!r}'.format(type))
