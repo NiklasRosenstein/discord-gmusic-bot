@@ -1,11 +1,17 @@
 
+DOCKER_IMAGE_NAME = discord-gmusic-bot
+DOCKER_CONTAINER_NAME = discord-gmusic-bot
+DOCKER_OPTS = -v /app/data:$(shell pwd)/data
+
 image:
-	docker build . -t discord-gmusic-bot
+	docker build . -t $(DOCKER_IMAGE_NAME)
 
 run: image
-	docker run -it discord-gmusic-bot
+	docker run $(DOCKER_OPTS) -it $(DOCKER_IMAGE_NAME)
 
-deploy: image
-	docker stop discord-gmusic-bot || true
-	docker rm discord-gmusic-bot || true
-	docker run -d --name discord-gmusic-bot discord-gmusic-bot
+stop:
+	docker stop $(DOCKER_CONTAINER_NAME) || true
+	docker rm $(DOCKER_CONTAINER_NAME) || true
+
+daemon: stop image
+	docker run $(DOCKER_OPTS) -d --name $(DOCKER_CONTAINER_NAME) $(DOCKER_IMAGE_NAME)

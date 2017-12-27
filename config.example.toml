@@ -1,9 +1,8 @@
 
 [general]
 music_volume = 0.05
-cache_dir = 'song_cache'
 debug = false
-#use_reloader = false
+#use_reloader = true
 
 [discord]
 token = "..."
@@ -12,6 +11,3 @@ add_bot_url = "https://discordapp.com/oauth2/authorize?client_id={CLIENT_ID}&sco
 [gmusic]
 username = "me@gmail.com"
 password = "apppassword"
-
-[windows]
-opus_dll = "libopus-0.x64.dll"

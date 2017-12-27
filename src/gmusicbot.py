@@ -68,11 +68,6 @@ class GMusicBot:
       self.logger.error('Unable to authenticate with Google Play Music.')
       return 1
 
-    # Load the Opus codec.
-    if os.name == 'nt':
-      dll_name = self.config['windows']['opus_dll']
-      self.logger.info('Loading {} ...'.format(dll_name))
-      discord.opus.load_opus(dll_name)
     if not discord.opus.is_loaded():
       self.logger.error('Opus not loaded.')
       return 1
