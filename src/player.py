@@ -10,6 +10,8 @@ import shutil
 import urllib.request, urllib.parse
 import youtube_dl
 
+import asyncio_rlock from './asyncio_rlock'
+
 
 class StreamNotCreatedError(Exception):
   pass
@@ -213,7 +215,7 @@ class Player:
     self.config = config
     self.logger = logger
     self.voice_client = voice_client
-    self.lock = asyncio.Lock()
+    self.lock = asyncio_rlock.RLock()
     self.current_song = None
     self.process_queue = True
     self.factory = factory
@@ -251,18 +253,18 @@ class Player:
         next_song = self.current_song
         if not next_song and self.queue:
           next_song = self.queue.pop(0)
-    if next_song:
-      await self.__play_song(next_song)
+      if next_song:
+        await self.__play_song(next_song)
 
   async def stop(self):
     with await self.lock:
       self.process_queue = False
-    await self.__kill_stream()
+      await self.__kill_stream()
 
   async def skip_song(self):
     with await self.lock:
       self.process_queue = True
-    await self.__kill_stream()
+      await self.__kill_stream()
 
   async def disconnect(self):
     if self.voice_client:
@@ -278,7 +280,6 @@ class Player:
       )
 
   async def __kill_stream(self):
-    next_song = None
     with await self.lock:
       if self.current_song and self.current_song.stream:
         self.current_song.stream.stop()
@@ -288,9 +289,7 @@ class Player:
         self.logger.exception(e)
       self.current_song = None
       if self.process_queue and self.queue:
-        next_song = self.queue.pop(0)
-    if next_song:
-      await self.__play_song(next_song)
+        await self.__play_song(self.queue.pop(0))
 
   async def __play_song(self, song):
     if await self.is_playing():
@@ -302,21 +301,22 @@ class Player:
         song.message = await self.client.send_message(song.channel, embed=song.create_embed())
       self.current_song = song
 
-    after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
-    try:
-      await song.create_stream(self.config, self.voice_client, after)
-    except StreamNotCreatedError as exc:
-      self.logger.exception(exc)
-      self.current_song = None
-      msg = '{} Something went wrong playing  **{}**.'
-      msg = msg.format(song.user.mention, song.name)
-      await self.client.delete_message(song.message)
-      await self.client.send_message(song.channel, msg)
-      return False
+      after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
+      try:
+        await song.create_stream(self.config, self.voice_client, after)
+      except StreamNotCreatedError as exc:
+        self.logger.exception(exc)
+        self.current_song = None
+        msg = '{} Something went wrong playing  **{}**.'
+        msg = msg.format(song.user.mention, song.name)
+        await self.client.delete_message(song.message)
+        await self.client.send_message(song.channel, msg)
+        return False
 
-    song.stream.volume = self.config['general']['music_volume']
-    song.stream.start()
-    await self.__update_current_song_message()
+      song.stream.volume = self.config['general']['music_volume']
+      song.stream.start()
+      await self.__update_current_song_message()
+
     return True
 
   async def queue_song(self, type, data, user, channel, timestamp, gmusic=None):
@@ -326,8 +326,8 @@ class Player:
       if self.current_song:
         self.queue.append(song)
         return song
-    if not await self.__play_song(song):
-      return None
+      if not await self.__play_song(song):
+        return None
     return song
 
 
