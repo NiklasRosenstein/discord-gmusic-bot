@@ -284,7 +284,7 @@ async def play(self, message, query):
   await self.client.send_typing(message.channel)
   if not await player.has_current_song() and not player.queue:
     await self.client.send_message(message.channel, '{} Playing a random song.'.format(user.mention))
-    gmusic = get_gmusic_client(self.client, message.channel, message.server)
+    gmusic = await get_gmusic_client(self.client, message.channel, message.server)
     if not gmusic:
       return
     song = random.choice(gmusic.get_promoted_songs())
