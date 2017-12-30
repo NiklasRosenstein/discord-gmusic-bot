@@ -267,7 +267,7 @@ class Player:
       if self.current_song and self.current_song.stream:
         self.process_queue = False
         self.current_song.stream.pause()
-        await self.__update_current_song_message()
+        await self.__update_song_message(self.current_song)
 
   async def resume(self):
     next_song = None
@@ -275,7 +275,7 @@ class Player:
       self.process_queue = True
       if self.current_song and self.current_song.stream:
         self.current_song.stream.resume()
-        await self.__update_current_song_message()
+        await self.__update_song_message(self.current_song)
       else:
         next_song = self.current_song
         if not next_song and self.queue:
@@ -286,12 +286,12 @@ class Player:
   async def stop(self):
     with await self.lock:
       self.process_queue = False
-      await self.__kill_stream()
+      await self.__kill_stream(self.current_song)
 
   async def skip_song(self):
     with await self.lock:
       self.process_queue = True
-      await self.__kill_stream()
+      await self.__kill_stream(self.current_song)
 
   async def disconnect(self):
     if self.voice_client:
@@ -299,24 +299,36 @@ class Player:
     self.voice_client = None
     self.factory.players.remove(self)
 
-  async def __update_current_song_message(self):
-    if self.current_song and self.current_song.message:
+  async def __update_song_message(self, song):
+    if song and song.message:
       await self.client.edit_message(
-        self.current_song.message,
-        embed=self.current_song.create_embed()
+        song.message,
+        embed=song.create_embed()
       )
 
-  async def __kill_stream(self):
+  async def __kill_stream(self, song):
+    """
+    Kills the stream of the specified *song* and plays the next song in the
+    queue, unless *song* is not the same as the #current_song.
+    """
+
+    if not song:
+      return
+
     with await self.lock:
-      if self.current_song and self.current_song.stream:
-        self.current_song.stream.stop()
+      if song is None:
+        song = self.current_song
+      if song and song.stream:
+        song.stream.stop()
       try:
-        await self.__update_current_song_message()
+        await self.__update_song_message(song)
       except Exception as e:
         self.logger.exception(e)
-      self.current_song = None
-      if self.process_queue and self.queue:
-        await self.__play_song(self.queue.pop(0))
+
+      if song == self.current_song:
+        self.current_song = None
+        if self.process_queue and self.queue:
+          await self.__play_song(self.queue.pop(0))
 
   async def __play_song(self, song):
     if await self.is_playing():
@@ -328,7 +340,7 @@ class Player:
         song.message = await self.client.send_message(song.channel, embed=song.create_embed())
       self.current_song = song
 
-      after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(), self.loop)
+      after = lambda: asyncio.run_coroutine_threadsafe(self.__kill_stream(song), self.loop)
       try:
         await song.create_stream(self.config, self.voice_client, after)
       except StreamNotCreatedError as exc:
@@ -342,7 +354,7 @@ class Player:
 
       song.stream.volume = self.config['general']['music_volume']
       song.stream.start()
-      await self.__update_current_song_message()
+      await self.__update_song_message(song)
 
     return True
 
