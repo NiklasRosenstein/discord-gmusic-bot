@@ -209,8 +209,18 @@ async def help(self, message, query):
     inline=False
   )
   embed.add_field(
+    name='config',
+    value="Shows the configuration status of sound services.",
+    inline=False
+  )
+  embed.add_field(
     name='config google-music',
     value="Starts a private chat with you to configure Google Music credentials.",
+    inline=False
+  )
+  embed.add_field(
+    name='config soundcloud',
+    value="Starts a private chat with you to setup your SoundCloud client ID.",
     inline=False
   )
   embed.add_field(
@@ -385,7 +395,24 @@ async def thanks(self, message, arg):
 @GMusicBot.command(name='config')
 async def config(self, message, arg):
   user = message.author
-  if arg == 'google-music':
+  if arg == '':
+    with models.session:
+      server = models.Server.get_or_create(id=message.server.id)
+      msg = '**Google Play Music**: '
+      if server.gmusic_credentials:
+        msg += 'Set-up.'
+      else:
+        msg += 'Missing.'
+      await self.client.send_message(message.channel, msg)
+      await self.client.send_message(message.channel, '**YouTube**: Always available.')
+      msg = '**SoundCloud**: '
+      if server.soundcloud_id:
+        msg += 'Set-up.'
+      else:
+        msg += 'Missing.'
+      await self.client.send_message(message.channel, msg)
+      return
+  elif arg == 'google-music':
     private_channel = await self.client.start_private_message(user)
     await self.client.send_message(private_channel, '**Configuring Google Music credentials for server {} (`{}`)**'.format(message.server.name, message.server.id))
     gmusic = await get_gmusic_client(self.client, None, message.server)

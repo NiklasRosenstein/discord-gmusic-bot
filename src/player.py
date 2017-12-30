@@ -124,20 +124,29 @@ class Song:
     elif state == 'paused':
       embed.title = '⏸️ Paused'
 
-    if self.type in (SongTypes.Gmusic, SongTypes.Soundcloud):
-      lines = []
+    lines = []
+    if self.title:
       lines.append('**Title** — {}'.format(self.title))
+    if self.artist:
       lines.append('**Artist** — {}'.format(self.artist))
+    if self.album:
       lines.append('**Album** — {}'.format(self.album))
+    if self.genre:
       lines.append('**Genre** — {}'.format(self.genre))
-      embed.description = '\n'.join(lines)
-      embed.colour = discord.Colour.orange()
+
+    if self.type == SongTypes.Gmusic:
+      lines.append('**Source** — Google Play Music')
+      embed.colour = discord.Colour(0xF55610)
     elif self.type == SongTypes.Youtube:
-      embed.description = self.title or self.url
-      embed.colour = discord.Colour.red()
+      lines.append('**Source** — [YouTube]({})'.format(self.url))
+      embed.colour = discord.Colour(0xF40000)
+    elif self.type == SongTypes.Soundcloud:
+      lines.append('**Source** — [SoundCloud]({})'.format(self.url))
+      embed.colour = discord.Colour(0xF55700)
     else:
       raise RuntimeError
 
+    embed.description = '\n'.join(lines)
     if self.image:
       embed.set_image(url=self.image)
     return embed
