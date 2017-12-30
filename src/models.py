@@ -1,6 +1,7 @@
 
 from pony.orm import *
 import gmusicapi
+import soundcloud from './drivers/soundcloud'
 
 db = Database()
 session = db_session
@@ -10,6 +11,7 @@ class Server(db.Entity):
 
   id = PrimaryKey(str)
   gmusic_credentials = Optional('GMusicCredentials')
+  soundcloud_id = Optional('SoundcloudID')
 
   @classmethod
   def get_or_create(cls, *, id):
@@ -45,3 +47,12 @@ class GMusicCredentials(db.Entity):
 
   def before_update(self):
     self.GMUSIC_INSTANCES.pop(self.server.id, None)
+
+
+class SoundcloudID(db.Entity):
+
+  server = PrimaryKey(Server)
+  client_id = Required(str)
+
+  def get_soundcloud_client(self):
+    return soundcloud.Client(self.client_id)

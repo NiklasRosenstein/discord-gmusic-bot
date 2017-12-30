@@ -20,11 +20,12 @@ class StreamNotCreatedError(Exception):
 class SongTypes(enum.Enum):
   Gmusic = 'gmusic'
   Youtube = 'youtube'
+  Soundcloud = 'soundcloud'
 
 
 class Song:
 
-  def __init__(self, type, data, user, channel, timestamp=None, message=None, gmusic=None):
+  def __init__(self, type, data, user, channel, timestamp=None, message=None, gmusic=None, soundcloud=None):
     self.type = type
     if type == SongTypes.Gmusic:
       assert isinstance(data, dict) and 'storeId' in data, type(data)
@@ -34,7 +35,7 @@ class Song:
       self.title = data['title']
       self.artist = data['artist']
       self.album = data['album']
-      self.genre = data['genre']
+      self.genre = data.get('genre', None)
       self.image = None
       self.song_id = data['storeId']
       self.gmusic_data = data
@@ -63,6 +64,20 @@ class Song:
         if not query.get('v'):
           raise ValueError('Invalid Youtube video URL: {!r}'.format(self.url))
         self.url = 'https://youtu.be/' + query['v'][0]
+
+    elif type == SongTypes.Soundcloud:
+      info = soundcloud.resolve(data)
+      if info['kind'] != 'track':
+        raise ValueError('URL is not a track')
+      if not info['streamable']:
+        raise ValueError('URL is not streamable')
+      self.title = info['title']
+      self.artist = None
+      self.album = None
+      self.genre = info.get('genre', None)
+      self.image = info.get('artwork_url', None)
+      self.url = data
+      self.stream_url = soundcloud.annotate(info['stream_url'])
 
     else:
       raise ValueError('invalid song type: {!r}'.format(type))
@@ -109,7 +124,7 @@ class Song:
     elif state == 'paused':
       embed.title = '⏸️ Paused'
 
-    if self.type == SongTypes.Gmusic:
+    if self.type in (SongTypes.Gmusic, SongTypes.Soundcloud):
       lines = []
       lines.append('**Title** — {}'.format(self.title))
       lines.append('**Artist** — {}'.format(self.artist))
@@ -141,6 +156,8 @@ class Song:
         self.stream = await voice_client.create_ytdl_player(self.url, after=after)
       except youtube_dl.utils.DownloadError as e:
         raise StreamNotCreatedError() from e
+    elif self.type == SongTypes.Soundcloud:
+      self.stream = voice_client.create_ffmpeg_player(self.stream_url, after=after)
     else:
       raise RuntimeError
 
@@ -208,6 +225,7 @@ class Player:
   Factory = PlayerFactory
   GmusicSong = SongTypes.Gmusic
   YoutubeSong = SongTypes.Youtube
+  SoundcloudSong = SongTypes.Soundcloud
 
   def __init__(self, client, config, logger, voice_client, factory):
     self.client = client
@@ -319,9 +337,9 @@ class Player:
 
     return True
 
-  async def queue_song(self, type, data, user, channel, timestamp, gmusic=None):
+  async def queue_song(self, type, data, user, channel, timestamp, gmusic=None, soundcloud=None):
     with await self.lock:
-      song = Song(type, data, user, channel, timestamp, gmusic=gmusic)
+      song = Song(type, data, user, channel, timestamp, gmusic=gmusic, soundcloud=soundcloud)
       await song.pull_metadata()
       if self.current_song:
         self.queue.append(song)

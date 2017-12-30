@@ -129,6 +129,21 @@ async def get_gmusic_client(client, channel, server):
     return gmusic
 
 
+async def get_soundcloud_client(client, channel, server):
+  with models.session:
+    guild = models.Server.get(id=server.id)
+    if not guild or not guild.soundcloud_id:
+      if channel:
+        await client.send_message(channel, 'Please set-up your SoundCloud client ID for this server.')
+      return None
+    client = guild.soundcloud_id.get_soundcloud_client()
+    if not client:
+      if channel:
+        await client.send_message(channel, 'There was a problem with your SoundCloud ID.')
+      return None
+    return client
+
+
 @GMusicBot.command()
 async def help(self, message, query):
   await self.client.send_typing(message.channel)
@@ -214,7 +229,7 @@ async def queue(self, message, query, reply_to_user=False):
     embed = discord.Embed()
     for song in (player.queue if player else []):
       value = 'added by {}'.format(song.user.mention)
-      if song.type == Player.YoutubeSong:
+      if song.type in (Player.YoutubeSong, Player.SoundcloudSong):
         value += ' ({})'.format(song.url)
       embed.add_field(name=song.name, value=value, inline=False)
     await self.client.send_message(message.channel, embed=embed)
@@ -230,6 +245,12 @@ async def queue(self, message, query, reply_to_user=False):
     if 'youtu' in info.netloc:
       player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
       song = await player.queue_song(Player.YoutubeSong, url, user, message.channel, message.timestamp)
+    elif 'soundcloud' in info.netloc:
+      player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
+      scclient = await get_soundcloud_client(self.client, message.channel, message.server)
+      if not scclient:
+        return
+      song = await player.queue_song(Player.SoundcloudSong, url, user, message.channel, message.timestamp, soundcloud=scclient)
     else:
       await self.client.send_message(message.channel, 'That doesn\'t look like a Youtube URL.')
       return
@@ -414,6 +435,24 @@ async def config(self, message, arg):
         return
     await self.client.send_message(private_channel, 'Alright, Google Music credentials have been configured.')
     return
+  elif arg == 'soundcloud':
+    private_channel = await self.client.start_private_message(user)
+    await self.client.send_message(private_channel, '**Configure SoundCloud Client ID for server {} (`{}`)**'.format(message.server.name, message.server.id))
+    await self.client.send_message(private_channel, 'Please send me your SoundCloud Client ID.')
+    await self.client.send_message(private_channel, 'Say "abort" to abort this process. Say "drop" to remove the existing client ID.')
+    msg = await self.client.wait_for_message(author=user, channel=private_channel, timeout=10.0)
+    if not msg:
+      await self.client.send_message(private_channel, 'Aborted.')
+      return
+    token = msg.content
+    with models.session:
+      server = models.Server.get_or_create(id=message.server.id)
+      if server.soundcloud_id:
+        server.soundcloud_id.delete()
+      server.soundcloud_id = models.SoundcloudID(server=server, client_id=token)
+      client = server.soundcloud_id.get_soundcloud_client()
+      # TODO: Test if token is valid
+    await self.client.send_message(private_channel, 'SoundCloud client ID has been updated.')
   else:
     await self.client.send_message(message.channel, '{} unsupported config target'.format(user.mention))
     return
