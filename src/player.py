@@ -154,19 +154,21 @@ class Song:
   async def create_stream(self, config, voice_client, after=None):
     if self.stream:
       raise RuntimeError('Song already has a stream')
+    # Prevents most hickups in playback.
+    options = '-bufsize 128k'
     if self.type == SongTypes.Gmusic:
       try:
         url = self.gmusic.get_stream_url(self.song_id)
       except gmusicapi.exceptions.CallFailure as e:
         raise StreamNotCreatedError() from e
-      self.stream = voice_client.create_ffmpeg_player(url, after=after)
+      self.stream = voice_client.create_ffmpeg_player(url, after=after, options=options)
     elif self.type == SongTypes.Youtube:
       try:
-        self.stream = await voice_client.create_ytdl_player(self.url, after=after)
+        self.stream = await voice_client.create_ytdl_player(self.url, after=after, options=options)
       except youtube_dl.utils.DownloadError as e:
         raise StreamNotCreatedError() from e
     elif self.type == SongTypes.Soundcloud:
-      self.stream = voice_client.create_ffmpeg_player(self.stream_url, after=after)
+      self.stream = voice_client.create_ffmpeg_player(self.stream_url, after=after, options=options)
     else:
       raise RuntimeError
 
