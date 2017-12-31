@@ -1,6 +1,6 @@
 
 [general]
-music_volume = 0.05
+music_volume = 0.1
 debug = false
 #use_reloader = true
 
