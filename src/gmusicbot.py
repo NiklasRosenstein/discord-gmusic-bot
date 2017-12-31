@@ -371,10 +371,9 @@ async def comehere(self, message, arg):
     await self.client.send_message(message.channel, '{} Join a Voice Channel first!'.format(message.author.mention))
   else:
     player = await self.players.get_player_for_server(message.server, voice_channel)
+    await self.client.send_message(message.channel, 'Heeeeeeeeeeeeeeeey! (づ｡◕‿‿◕｡)づ')
     if player.voice_client.channel != voice_channel:
       await player.voice_client.move_to(voice_channel)
-      await self.client.send_message(message.channel, 'Heeeeeeeeeeeeeeeey! (づ｡◕‿‿◕｡)づ')
-
 
 @GMusicBot.command()
 async def leave(self, message, arg):
@@ -403,7 +402,7 @@ async def volume(self, message, arg):
         if volume < 0 or volume > 100:
           raise ValueError
       except ValueError:
-        await self.client.send_message(message.channel, 'https://www.youtube.com/watch?v=X2x1gk8BR20')
+        await self.client.send_message(message.channel, 'Know your numbers. https://www.youtube.com/watch?v=X2x1gk8BR20')
       else:
         server = models.Server.get_or_create(id=message.server.id)
         server.volume = volume
