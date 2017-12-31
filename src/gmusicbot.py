@@ -385,6 +385,27 @@ async def leave(self, message, arg):
 
 
 @GMusicBot.command()
+async def volume(self, message, arg):
+  with models.session:
+    if arg == '':
+      server = models.Server.get(id=message.server.id)
+      volume = server.volume if server else models.Server.volume.default
+      await self.client.send_message(message.channel, '**Current Volumne**: ' + str(volume))
+    else:
+      try:
+        volume = int(arg)
+        if volume < 0 or volume > 100:
+          raise ValueError
+      except ValueError:
+        await self.client.send_message(message.channel, 'https://www.youtube.com/watch?v=X2x1gk8BR20')
+      else:
+        server = models.Server.get_or_create(id=message.server.id)
+        server.volume = volume
+        player = await self.players.get_player_for_server(message.server)
+        await player.set_volume(volume)
+
+
+@GMusicBot.command()
 async def thanks(self, message, arg):
   url = random.choice(thanks_urls)
   embed = discord.Embed()

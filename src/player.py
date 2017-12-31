@@ -11,6 +11,7 @@ import urllib.request, urllib.parse
 import youtube_dl
 
 import asyncio_rlock from './asyncio_rlock'
+import models from './models'
 
 
 class StreamNotCreatedError(Exception):
@@ -225,6 +226,10 @@ class PlayerFactory:
     if voice_channel and not player:
       voice_client = await self.client.join_voice_channel(voice_channel)
       player = self.get_player_for_voice_client(voice_client)
+      with models.session:
+        server = models.Server.get(id=server.id)
+        if server:
+          await player.set_volume(server.volume)
     return player
 
 
@@ -248,11 +253,16 @@ class Player:
     self.current_song = None
     self.process_queue = True
     self.factory = factory
+    self.volume = 50
     self.queue = []
 
   @property
   def server(self):
     return self.voice_client.server
+
+  @property
+  def __stream_volume(self):
+    return self.config['general']['music_volume'] * (self.volume / 100.0)
 
   async def has_current_song(self):
     with await self.lock:
@@ -300,6 +310,13 @@ class Player:
       await self.voice_client.disconnect()
     self.voice_client = None
     self.factory.players.remove(self)
+
+  async def set_volume(self, volume):
+    assert volume >= 0 and volume <= 100, volume
+    with await self.lock:
+      self.volume = volume
+      if self.current_song and self.current_song.stream:
+        self.current_song.stream.volume = self.__stream_volume
 
   async def __update_song_message(self, song):
     if song and song.message:
@@ -354,7 +371,7 @@ class Player:
         await self.client.send_message(song.channel, msg)
         return False
 
-      song.stream.volume = self.config['general']['music_volume']
+      song.stream.volume = self.__stream_volume
       song.stream.start()
       await self.__update_song_message(song)
 

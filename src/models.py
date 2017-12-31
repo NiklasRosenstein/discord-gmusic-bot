@@ -10,6 +10,9 @@ session = db_session
 class Server(db.Entity):
 
   id = PrimaryKey(str)
+  volume = Required(int, default=50)
+
+  # Reverse members
   gmusic_credentials = Optional('GMusicCredentials')
   soundcloud_id = Optional('SoundcloudID')
 
@@ -100,5 +103,15 @@ def migrate(dry=False):
     commit()
 
 
-def migration_000(self):
+def migration_000():
   pass
+
+
+def migration_001():
+  """
+  Adds #Server.volume.
+  """
+
+  db.execute('''
+    ALTER TABLE Server ADD COLUMN volume INTEGER NOT NULL DEFAULT 50
+  ''')
