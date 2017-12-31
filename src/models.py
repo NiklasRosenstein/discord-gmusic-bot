@@ -76,24 +76,30 @@ def migrate(dry=False):
   # TODO: This probably only works with SQLite as the backend.
   query = "COUNT(*) FROM sqlite_master WHERE type='table' AND name='MigrationIndex'"
   if db.select(query)[0]:
-    have_index = db.select("[index] FROM MigrationIndex")[0]
+    have_index = next(iter(db.select("[index] FROM MigrationIndex WHERE id=1")), None)
   else:
+    have_index = None
+
+  def update_migration_index():
+    nonlocal max_index
+    print('Updating MigrationIndex to {}'.format(max_index))
+    db.execute('INSERT OR IGNORE INTO MigrationIndex VALUES (1, $max_index)')
+    db.execute('UPDATE MigrationIndex SET [index]=$max_index WHERE id=1')
+
+  if have_index is None:
     print('note: no MigrationIndex found, assuming latest revision')
-    have_index = max_index
-
-  if have_index > max_index:
-    print('warning: have migration index {} where the maximum is {}'
-        .format(have_index, max_index))
-  if have_index >= max_index:
-    return
-
-  print('Migrating database from {} to {} ...'.format(have_index, len(migrations)-1))
-  for index in range(have_index + 1, len(migrations)):
-    print('  migration {}'.format(index))
-    migrations[index]()
-
-  db.execute('INSERT OR IGNORE INTO MigrationIndex VALUES (1, $max_index)')
-  db.execute('UPDATE MigrationIndex SET [index]=$max_index WHERE id=1')
+    update_migration_index()
+  else:
+    if have_index > max_index:
+      print('warning: have migration index {} where the maximum is {}'
+          .format(have_index, max_index))
+    if have_index >= max_index:
+      return
+    print('Migrating database from {} to {} ...'.format(have_index, len(migrations)-1))
+    for index in range(have_index + 1, len(migrations)):
+      print('  migration {}'.format(index))
+      migrations[index]()
+    update_migration_index()
 
   if dry:
     print('Dry migration requested, rolling back ...')
