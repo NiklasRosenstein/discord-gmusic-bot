@@ -373,6 +373,7 @@ async def comehere(self, message, arg):
     player = await self.players.get_player_for_server(message.server, voice_channel)
     if player.voice_client.channel != voice_channel:
       await player.voice_client.move_to(voice_channel)
+      await self.client.send_message(message.channel, 'Heeeeeeeeeeeeeeeey! (づ｡◕‿‿◕｡)づ')
 
 
 @GMusicBot.command()
