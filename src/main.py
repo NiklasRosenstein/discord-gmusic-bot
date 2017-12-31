@@ -32,6 +32,7 @@ def main():
   if 'filename' in config['database']:
     config['database']['filename'] = os.path.abspath(config['database']['filename'])
   models.db.bind(**config['database'])
+  models.migrate()
   models.db.generate_mapping(create_tables=True)
 
   # Run the bot.

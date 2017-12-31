@@ -56,3 +56,49 @@ class SoundcloudID(db.Entity):
 
   def get_soundcloud_client(self):
     return soundcloud.Client(self.client_id)
+
+
+class MigrationIndex(db.Entity):
+
+  id = PrimaryKey(int)  # Always 1
+  index = Required(int)
+
+
+@session
+def migrate(dry=False):
+  migrations = [v for k, v in globals().items() if k.startswith('migration_')]
+  migrations.sort(key=lambda x: x.__name__)
+  max_index = len(migrations) - 1
+
+  # TODO: This probably only works with SQLite as the backend.
+  query = "COUNT(*) FROM sqlite_master WHERE type='table' AND name='MigrationIndex'"
+  if db.select(query)[0]:
+    have_index = db.select("[index] FROM MigrationIndex")[0]
+  else:
+    print('note: no MigrationIndex found, assuming latest revision')
+    have_index = max_index
+
+  if have_index > max_index:
+    print('warning: have migration index {} where the maximum is {}'
+        .format(have_index, max_index))
+  if have_index >= max_index:
+    return
+
+  print('Migrating database from {} to {} ...'.format(have_index, len(migrations)-1))
+  for index in range(have_index + 1, len(migrations)):
+    print('  migration {}'.format(index))
+    migrations[index]()
+
+  db.execute('INSERT OR IGNORE INTO MigrationIndex VALUES (1, $max_index)')
+  db.execute('UPDATE MigrationIndex SET [index]=$max_index WHERE id=1')
+
+  if dry:
+    print('Dry migration requested, rolling back ...')
+    rollback()
+  else:
+    print('Commiting migration sequence ...')
+    commit()
+
+
+def migration_000(self):
+  pass
