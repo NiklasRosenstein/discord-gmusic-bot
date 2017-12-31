@@ -163,9 +163,9 @@ async def help(self, message, query):
   )
   embed.add_field(
     name='play <query>',
-    value='Query can be a Youtube URL or a search query for Google Music. '
-          'Adds the Youtube Video or the first song returned by the search '
-          'query to the queue.',
+    value='Query can be a Youtube URL, SoundCloud URL or a search query for '
+          'Google Music. Adds the Youtube Video or the first song returned by '
+          'the search query to the queue.',
     inline=False
   )
   embed.add_field(
@@ -185,12 +185,17 @@ async def help(self, message, query):
   )
   embed.add_field(
     name='stop',
-    value='Stop the playback and remove the curent song from the tip of the queue.',
+    value='Stop the playback and remove the current song from the queue.',
     inline=False
   )
   embed.add_field(
     name='skip',
     value='Play the next song in the queue.',
+    inline=False
+  )
+  embed.add_field(
+    name='volume [<value>]',
+    value='Show or set the current volume (0 <= volume <= 100)',
     inline=False
   )
   embed.add_field(
