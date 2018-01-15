@@ -208,7 +208,7 @@ class PlayerFactory:
       self.players.append(player)
     return player
 
-  async def get_player_for_server(self, server, voice_channel=None):
+  async def get_player_for_server(self, server, voice_channel=None, move_voice_client=False):
     """
     This is a coroutine function.
 
@@ -220,16 +220,34 @@ class PlayerFactory:
     if it already exists. Use #Player.voice_client.move_to() instead.
     """
 
+    # Find the Player object for this Discord server.
     player = discord.utils.find(
       lambda x: x.voice_client.server == server,
       self.players)
-    if voice_channel and not player:
-      voice_client = await self.client.join_voice_channel(voice_channel)
+
+    # Find the existing voice client for the server.
+    voice_client = discord.utils.find(
+      lambda x: x.server == server,
+      self.client.voice_clients)
+
+    # Make sure we have a voice client if we have a voice channel,
+    # but don't automatically move it to the channel.
+    if voice_channel:
+      if not voice_client:
+        voice_client = await self.client.join_voice_channel(voice_channel)
+      elif move_voice_client:
+        voice_client.move_to(voice_channel)
+
+    # Create a new player if we don't have one.
+    if player:
+      assert player.voice_client == voice_client
+    else:
       player = self.get_player_for_voice_client(voice_client)
       with models.session:
         server = models.Server.get(id=server.id)
         if server:
           await player.set_volume(server.volume)
+
     return player
 
 
