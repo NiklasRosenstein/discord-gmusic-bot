@@ -13,5 +13,8 @@ stop:
 	docker stop $(DOCKER_CONTAINER_NAME) || true
 	docker rm $(DOCKER_CONTAINER_NAME) || true
 
+shell: image
+	docker run -it $(DOCKER_IMAGE_NAME) nodepy
+
 daemon: stop image
 	docker run $(DOCKER_OPTS) -d --name $(DOCKER_CONTAINER_NAME) $(DOCKER_IMAGE_NAME)

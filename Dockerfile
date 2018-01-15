@@ -14,4 +14,4 @@ COPY nodepy.json nodepy.json
 RUN nodepy-pm install
 
 COPY . .
-ENTRYPOINT nodepy .
+CMD nodepy .
