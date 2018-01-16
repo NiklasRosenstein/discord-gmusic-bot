@@ -77,26 +77,36 @@ class GMusicBot:
     return 0
 
   def check_command_prefix(self, message):
+    if message.content.startswith(self.client.user.mention):
+      return self.client.user.mention
     if message.channel.type == discord.ChannelType.text:
       if message.channel.topic and 'discord-gmusic-bot' in message.channel.topic:
         return ''
-    return self.client.user.mention
+    return None
 
   async def on_message(self, message):
+    if message.author == self.client.user: return
+
+    def find_matching_command(line):
+      for command in self.COMMANDS:
+        match = re.match('^{}(\s|$)'.format(re.escape(command.name)), line)
+        if match:
+          return command, line[match.end():].lstrip()
+      return None, line
+
     prefix = self.check_command_prefix(message)
-    if not message.content.startswith(prefix):
+    if prefix is None or not message.content.startswith(prefix):
       return
     content = message.content[len(prefix):].lstrip()
-    for command in self.COMMANDS:
-      match = re.match('^{}(\s|$)'.format(re.escape(command.name)), content)
-      if match:
-        content = content[match.end():].lstrip()
+
+    for line in content.split(';'):
+      command, line = find_matching_command(line.lstrip())
+      if command:
         try:
-          await command.handler(self, message, content)
+          await command.handler(self, message, line)
         except Exception as e:
           self.logger.error('Exception handling command "{}"'.format(command.name))
           await self.handle_exception(message.channel, e)
-        return
 
   async def handle_exception(self, channel, exc):
     self.logger.exception(exc)
