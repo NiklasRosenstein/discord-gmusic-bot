@@ -222,7 +222,7 @@ class PlayerFactory:
 
     # Find the Player object for this Discord server.
     player = discord.utils.find(
-      lambda x: x.voice_client.server == server,
+      lambda x: x.voice_client and x.voice_client.server == server,
       self.players)
 
     # Find the existing voice client for the server.
@@ -240,8 +240,8 @@ class PlayerFactory:
 
     # Create a new player if we don't have one.
     if player:
-      assert player.voice_client == voice_client
-    else:
+      assert not move_voice_client or player.voice_client == voice_client
+    elif voice_client:
       player = self.get_player_for_voice_client(voice_client)
       with models.session:
         server = models.Server.get(id=server.id)
