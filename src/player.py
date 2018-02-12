@@ -322,6 +322,10 @@ class Player:
       self.process_queue = True
       await self.__kill_stream(self.current_song)
 
+  async def clear_queue(self):
+    with await self.lock:
+      self.queue[:] = []
+
   async def disconnect(self):
     if self.voice_client:
       await self.voice_client.disconnect()

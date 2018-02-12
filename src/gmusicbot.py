@@ -359,9 +359,15 @@ async def stop(self, message, arg):
 @GMusicBot.command()
 async def skip(self, message, arg):
   player = await self.players.get_player_for_server(message.server)
-  if player:
-    await player.skip_song()
-    await player.resume()
+  if arg == 'all':
+    if player:
+      await player.clear_queue()
+  if arg in ('all', ''):
+    if player:
+      await player.skip_song()
+      await player.resume()
+  else:
+    await self.client.send_message(message.channel, 'Not sure what you mean with "skip {}"...'.format(arg))
 
 
 @GMusicBot.command()
