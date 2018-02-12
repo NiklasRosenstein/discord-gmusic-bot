@@ -428,6 +428,21 @@ async def thanks(self, message, arg):
   await self.client.send_message(message.channel, embed=embed)
 
 
+@GMusicBot.command()
+async def garbage(self, message, arg):
+  await play(self, message, 'https://www.youtube.com/watch?v=FZUcpVmEHuk')
+
+
+@GMusicBot.command()
+async def brush(self, message, arg):
+  await play(self, message, 'https://www.youtube.com/watch?v=GRMhD2C5wu0')
+
+
+@GMusicBot.command()
+async def grandma(self, message, arg):
+  await play(self, message, 'https://www.youtube.com/watch?v=JMXwYi1Ni6A')
+
+
 @GMusicBot.command(name='config')
 async def config(self, message, arg):
   user = message.author
