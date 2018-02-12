@@ -204,6 +204,11 @@ async def help(self, message, query):
     inline=False
   )
   embed.add_field(
+    name='skip all',
+    value='Skip all values currently in queue.',
+    inline=False
+  )
+  embed.add_field(
     name='volume [<value>]',
     value='Show or set the current volume (0 <= volume <= 100)',
     inline=False
@@ -236,6 +241,11 @@ async def help(self, message, query):
   embed.add_field(
     name='config soundcloud',
     value="Starts a private chat with you to setup your SoundCloud client ID.",
+    inline=False
+  )
+  embed.add_field(
+    name='KappaKappa',
+    value='`garbage`, `grandma`, `brush`',
     inline=False
   )
   embed.add_field(
