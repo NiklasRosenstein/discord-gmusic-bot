@@ -222,7 +222,7 @@ class PlayerFactory:
 
     # Find the Player object for this Discord server.
     player = discord.utils.find(
-      lambda x: x.voice_client and x.voice_client.server == server,
+      lambda x: x.server == server,
       self.players)
 
     # Find the existing voice client for the server.
@@ -248,6 +248,8 @@ class PlayerFactory:
         if server:
           await player.set_volume(server.volume)
 
+    if voice_client:
+      player.voice_client = voice_client
     return player
 
 
@@ -266,6 +268,7 @@ class Player:
     self.loop = client.loop
     self.config = config
     self.logger = logger
+    self.server = voice_client.server
     self.voice_client = voice_client
     self.lock = asyncio_rlock.RLock()
     self.current_song = None
@@ -273,10 +276,6 @@ class Player:
     self.factory = factory
     self.volume = 50
     self.queue = []
-
-  @property
-  def server(self):
-    return self.voice_client.server
 
   @property
   def __stream_volume(self):
@@ -327,7 +326,7 @@ class Player:
     if self.voice_client:
       await self.voice_client.disconnect()
     self.voice_client = None
-    self.factory.players.remove(self)
+    #self.factory.players.remove(self)
 
   async def set_volume(self, volume):
     assert volume >= 0 and volume <= 100, volume
@@ -366,6 +365,8 @@ class Player:
         self.current_song = None
         if self.process_queue and self.queue:
           await self.__play_song(self.queue.pop(0))
+        else:
+          await self.disconnect()
 
   async def __play_song(self, song):
     if await self.is_playing():
