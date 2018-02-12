@@ -9,6 +9,7 @@ import gmusicapi
 import os
 import random
 import re
+import requests
 import signal
 import subprocess
 import sys
@@ -244,6 +245,12 @@ async def help(self, message, query):
     inline=False
   )
   embed.add_field(
+    name='config avatar [<url>|remove]',
+    value="Set the avatar of the bot. If no `url` is specified, an image "
+          "must be attached to the message.",
+    inline=False
+  )
+  embed.add_field(
     name='KappaKappa',
     value='`garbage`, `grandma`, `brush`',
     inline=False
@@ -462,7 +469,8 @@ async def grandma(self, message, arg):
 @GMusicBot.command(name='config')
 async def config(self, message, arg):
   user = message.author
-  if arg == '':
+  argv = arg.split(' ')
+  if argv[0] == '':
     with models.session:
       server = models.Server.get_or_create(id=message.server.id)
       msg = '**Google Play Music**: '
@@ -479,7 +487,7 @@ async def config(self, message, arg):
         msg += 'Missing.'
       await self.client.send_message(message.channel, msg)
       return
-  elif arg == 'google-music':
+  elif argv[0] == 'google-music':
     private_channel = await self.client.start_private_message(user)
     await self.client.send_message(private_channel, '**Configuring Google Music credentials for server {} (`{}`)**'.format(message.server.name, message.server.id))
     gmusic = await get_gmusic_client(self.client, None, message.server)
@@ -529,7 +537,7 @@ async def config(self, message, arg):
         return
     await self.client.send_message(private_channel, 'Alright, Google Music credentials have been configured.')
     return
-  elif arg == 'soundcloud':
+  elif argv[0] == 'soundcloud':
     private_channel = await self.client.start_private_message(user)
     await self.client.send_message(private_channel, '**Configure SoundCloud Client ID for server {} (`{}`)**'.format(message.server.name, message.server.id))
     await self.client.send_message(private_channel, 'Please send me your SoundCloud Client ID.')
@@ -547,6 +555,29 @@ async def config(self, message, arg):
       client = server.soundcloud_id.get_soundcloud_client()
       # TODO: Test if token is valid
     await self.client.send_message(private_channel, 'SoundCloud client ID has been updated.')
+  elif argv[0] == 'avatar':
+    if len(argv) > 1:
+      image_url = argv[1]
+    elif message.attachments:
+      attachment = message.attachments[0]
+      if not 'width' in attachment:
+        await self.client.send_message(message.channel, 'The attached file does not appear to be an image.')
+        return
+      image_url = attachment['url']
+    else:
+      await self.client.send_message(message.channel, 'Please specify an image URL or attach an image.')
+      return
+    if image_url == 'remove':
+      image_data = None
+    else:
+      try:
+        resp = requests.get(image_url)
+        resp.raise_for_status()
+      except requests.RequestException as exc:
+        await self.client.send_message(message.channel, 'Unable to load the image (**{}**).'.format(exc))
+        return
+      image_data = resp.content
+    await self.client.edit_profile(avatar=image_data)
   else:
     await self.client.send_message(message.channel, '{} unsupported config target'.format(user.mention))
     return
