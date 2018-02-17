@@ -1,7 +1,7 @@
 
 DOCKER_IMAGE_NAME = discord-gmusic-bot
 DOCKER_CONTAINER_NAME = discord-gmusic-bot
-DOCKER_OPTS = -v $(shell pwd)/data:/app/data
+DOCKER_OPTS = -v $(shell pwd)/data:/app/data --rm
 
 image:
 	docker build . -t $(DOCKER_IMAGE_NAME)
