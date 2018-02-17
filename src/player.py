@@ -5,6 +5,7 @@ import discord
 import enum
 import gmusicapi
 import os
+import posixpath
 import re
 import shutil
 import urllib.request, urllib.parse
@@ -22,6 +23,7 @@ class SongTypes(enum.Enum):
   Gmusic = 'gmusic'
   Youtube = 'youtube'
   Soundcloud = 'soundcloud'
+  Raw = 'raw'
 
 
 class Song:
@@ -79,6 +81,14 @@ class Song:
       self.image = info.get('artwork_url', None)
       self.url = data
       self.stream_url = soundcloud.annotate(info['stream_url'])
+
+    elif type == SongTypes.Raw:
+      self.title = posixpath.basename(data)
+      self.artist = None
+      self.album = None
+      self.genre = None
+      self.image = None
+      self.url = data
 
     else:
       raise ValueError('invalid song type: {!r}'.format(type))
@@ -144,6 +154,9 @@ class Song:
     elif self.type == SongTypes.Soundcloud:
       lines.append('**Source** — [SoundCloud]({})'.format(self.url))
       embed.colour = discord.Colour(0xF55700)
+    elif self.type == SongTypes.Raw:
+      lines.append('**Source** — [URL]({})'.format(self.url))
+      embed.colour = discord.Colour(0x5E30F4)
     else:
       raise RuntimeError
 
@@ -170,6 +183,8 @@ class Song:
         raise StreamNotCreatedError() from e
     elif self.type == SongTypes.Soundcloud:
       self.stream = voice_client.create_ffmpeg_player(self.stream_url, after=after, options=options)
+    elif self.type == SongTypes.Raw:
+      self.stream = voice_client.create_ffmpeg_player(self.url, after=after, options=options)
     else:
       raise RuntimeError
 
@@ -262,6 +277,7 @@ class Player:
   GmusicSong = SongTypes.Gmusic
   YoutubeSong = SongTypes.Youtube
   SoundcloudSong = SongTypes.Soundcloud
+  RawSong = SongTypes.Raw
 
   def __init__(self, client, config, logger, voice_client, factory):
     self.client = client

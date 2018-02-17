@@ -7,6 +7,7 @@ import discord, discord.ext.commands
 import logging
 import gmusicapi
 import os
+import posixpath
 import random
 import re
 import requests
@@ -293,6 +294,9 @@ async def queue(self, message, query, reply_to_user=False):
       if not scclient:
         return
       song = await player.queue_song(Player.SoundcloudSong, url, user, message.channel, message.timestamp, soundcloud=scclient)
+    elif posixpath.splitext(info.path)[1] in ('.mp3', '.wav'):
+      player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
+      song = await player.queue_song(Player.RawSong, url, user, message.channel, message.timestamp)
     else:
       await self.client.send_message(message.channel, 'That doesn\'t look like a Youtube URL.')
       return
