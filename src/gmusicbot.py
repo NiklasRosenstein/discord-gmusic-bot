@@ -99,7 +99,11 @@ class GMusicBot:
     prefix = self.check_command_prefix(message)
     if prefix is None or not message.content.startswith(prefix):
       return
-    content = message.content[len(prefix):].lstrip()
+
+    content = message.content[len(prefix):].strip()
+    if not content and message.attachments:
+      await on_plain_attachments(self, message)
+      return
 
     for line in content.split(';'):
       command, line = find_matching_command(line.lstrip())
@@ -154,6 +158,23 @@ async def get_soundcloud_client(client, channel, server):
         await client.send_message(channel, 'There was a problem with your SoundCloud ID.')
       return None
     return client
+
+
+async def on_plain_attachments(self, message):
+  """
+  Called by the #GMusicBot when a message without content is sent but when
+  it has attachments.
+  """
+
+  sound_urls = []
+  for attachment in message.attachments:
+    if posixpath.splitext(attachment['url'])[1] in ('.mp3', '.wav'):
+      sound_urls.append(attachment['url'])
+
+  if sound_urls:
+    player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
+    for url in sound_urls:
+      await player.queue_song(Player.RawSong, url, message.author, message.channel, message.timestamp)
 
 
 @GMusicBot.command()
