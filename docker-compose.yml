@@ -1,0 +1,9 @@
+version: '3.4'
+services:
+  bot:
+    build: .
+    volumes:
+      - data:/app/data
+x-docker-remote:
+  project:
+    name: discord-gmusic-bot
