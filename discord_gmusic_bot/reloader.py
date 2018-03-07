@@ -61,6 +61,3 @@ class Reloader:
     finally:
       self._process.terminate()
       self._process.wait()
-
-
-module.exports = Reloader

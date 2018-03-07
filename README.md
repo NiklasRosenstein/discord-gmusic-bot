@@ -15,8 +15,7 @@ Send `help` to get a list of available commands.
 ### Get Started
 
     $ cp config.example.toml config.toml && $(EDITOR) config.toml
-    $ docker build . -t discord-gmusic-bot
-    $ docker run discord-gmusic-bot
+    $ docker-compose up --build
     [...]
     INFO:discord-gmusic-bot:        https://discordapp.com/oauth2/authorize?client_id=282709421955576523&scope=bot&permissions=3148800
 

@@ -3,7 +3,7 @@ services:
   bot:
     build: .
     volumes:
-      - data:/app/data
+      - ./data:/app/data
 x-docker-remote:
   project:
     name: discord-gmusic-bot

@@ -1,20 +1,19 @@
 
 import logging
-import nodepy.runtime
 import os
 import sys
 import toml
 
-import Reloader from './reloader'
-import GMusicBot from './gmusicbot'
-import models from './models'
+from .reloader import Reloader
+from .gmusicbot import GMusicBot
+from . import models
 
 
 def main():
   logging.basicConfig(level=logging.INFO, format='[%(asctime)s - %(levelname)s]: %(message)s')
 
   # Load the configuration file.
-  with module.package.directory.joinpath('config.toml').open() as fp:
+  with open(os.path.normpath(__file__ + '/../../config.toml')) as fp:
     config = toml.load(fp)
 
   # Create a reloader and check if we're in the reloader's parent process.
@@ -22,7 +21,7 @@ def main():
   if reloader_enabled:
     reloader = Reloader()
     if not reloader.is_inner():
-      argv = nodepy.runtime.exec_args + [str(module.filename)]
+      argv = [sys.executable] + sys.argv
       reloader.run_forever(argv)
       return
   else:
@@ -38,7 +37,3 @@ def main():
   # Run the bot.
   bot = GMusicBot(config, reloader)
   bot.run()
-
-
-if require.main == module:
-  sys.exit(main())

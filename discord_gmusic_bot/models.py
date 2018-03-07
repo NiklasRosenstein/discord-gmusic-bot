@@ -1,7 +1,7 @@
 
 from pony.orm import *
 import gmusicapi
-import soundcloud from './drivers/soundcloud'
+from .drivers import soundcloud
 
 db = Database()
 session = db_session

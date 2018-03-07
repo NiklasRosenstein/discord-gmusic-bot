@@ -19,10 +19,10 @@ import toml
 import traceback
 import urllib.parse
 
-import models from './models'
-import Player from './player'
+from . import models
+from .player import Player
 
-with module.package.directory.joinpath('resources/thanks.txt').open() as fp:
+with open(os.path.normpath(__file__ + '/../../resources/thanks.txt')) as fp:
   thanks_urls = list([x.split(',')[1] for x in fp if x.strip()])
 
 
@@ -615,6 +615,3 @@ async def on_ready(self):
   self.logger.info('')
   self.logger.info('        {}'.format(await self.get_invite_link()))
   self.logger.info('')
-
-
-module.exports = GMusicBot

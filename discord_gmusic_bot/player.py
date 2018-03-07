@@ -11,8 +11,7 @@ import shutil
 import urllib.request, urllib.parse
 import youtube_dl
 
-import asyncio_rlock from './asyncio_rlock'
-import models from './models'
+from . import asyncio_rlock, models
 
 
 class StreamNotCreatedError(Exception):
@@ -426,6 +425,3 @@ class Player:
       if not await self.__play_song(song):
         return None
     return song
-
-
-module.exports = Player
