@@ -22,9 +22,6 @@ import urllib.parse
 from . import models
 from .player import Player
 
-with open(os.path.normpath(__file__ + '/../../resources/thanks.txt')) as fp:
-  thanks_urls = list([x.split(',')[1] for x in fp if x.strip()])
-
 
 def async_partial(func, *pargs, **pkwargs):
   assert asyncio.iscoroutinefunction(func), func
@@ -466,14 +463,6 @@ async def volume(self, message, arg):
         server.volume = volume
         player = await self.players.get_player_for_server(message.server)
         await player.set_volume(volume)
-
-
-@GMusicBot.command()
-async def thanks(self, message, arg):
-  url = random.choice(thanks_urls)
-  embed = discord.Embed()
-  embed.set_image(url=url)
-  await self.client.send_message(message.channel, embed=embed)
 
 
 @GMusicBot.command()
