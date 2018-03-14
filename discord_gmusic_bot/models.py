@@ -88,8 +88,10 @@ def migrate(dry=False):
 
   if have_index is None:
     print('note: no MigrationIndex found, assuming latest revision')
-    db.execute('''CREATE TABLE IF NOT EXISTS MigrationIndex (
-                  id PRIMARY KEY INTEGER, index INTEGER)''')
+    db.execute('''CREATE TABLE MigrationIndex (
+                    id INTEGER PRIMARY KEY,
+                    "index" INTEGER NOT NULL
+                  );''')
     update_migration_index()
   else:
     if have_index > max_index:
