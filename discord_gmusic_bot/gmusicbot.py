@@ -22,6 +22,11 @@ import urllib.parse
 from . import models
 from .player import Player
 
+# This dictionary maps server ID to the previous results from the "search"
+# command. This is used for "play" or "queue" commands with "#<num>" as
+# arguments.
+previous_search_results = {}
+
 
 def async_partial(func, *pargs, **pkwargs):
   assert asyncio.iscoroutinefunction(func), func
@@ -199,6 +204,11 @@ async def help(self, message, query):
     inline=False
   )
   embed.add_field(
+    name='play #<num>[,<num>...]',
+    value='Queue one or more songs from the previous search results.',
+    inline=False
+  )
+  embed.add_field(
     name='queue',
     value='Show the tracks currently in the queue.',
     inline=False
@@ -300,6 +310,31 @@ async def queue(self, message, query, reply_to_user=False):
     await self.client.send_message(message.channel, '{} Join a voice channel, first.'.format(message.author.mention))
     return
 
+  gmusic_tracks = []
+
+  async def report_song(song):
+    if not song.stream and reply_to_user:
+      await self.client.send_message(message.channel, '{} I\'ve added **{}** to the queue.'.format(user.mention, song.name))
+
+  if query.startswith('#'):
+    try:
+      nums = [int(x) for x in query[1:].split(',')]
+    except ValueError:
+      await self.client.send_message(message.channel, '**Invalid format** – Expected format `#<num>[,<num>[...]]`')
+      return
+    results = previous_search_results.get(message.server.id)
+    if not results:
+      await self.client.send_message(message.channel, '**No previous search results.**')
+      return
+    invalid_indices = set()
+    for num in nums:
+      if (num-1) not in range(len(results)):
+        invalid_indices.add(num)
+      else:
+        gmusic_tracks.append(results[num-1])
+    if invalid_indices:
+      await self.client.send_message(message.channel, "**Note: Invalid track indices from previous search: {}**".format(invalid_indices))
+
   url = query.strip().lstrip('<').rstrip('>')
   info = urllib.parse.urlparse(url)
   if info.scheme and info.netloc and info.path:
@@ -312,9 +347,11 @@ async def queue(self, message, query, reply_to_user=False):
       if not scclient:
         return
       song = await player.queue_song(Player.SoundcloudSong, url, user, message.channel, message.timestamp, soundcloud=scclient)
+      await report_song(song)
     elif posixpath.splitext(info.path)[1] in ('.mp3', '.wav'):
       player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
       song = await player.queue_song(Player.RawSong, url, user, message.channel, message.timestamp)
+      await report_song(song)
     else:
       await self.client.send_message(message.channel, 'That doesn\'t look like a Youtube URL.')
       return
@@ -327,12 +364,11 @@ async def queue(self, message, query, reply_to_user=False):
       await self.client.send_message(message.channel, '{} Sorry, seems like Google Music sucks.'.format(user.mention))
       return
 
-    song_data = results['song_hits'][0]['track']
+  if gmusic_tracks:
     player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
-    song = await player.queue_song(Player.GmusicSong, song_data, user, message.channel, message.timestamp, gmusic=gmusic)
-
-  if song and not song.stream and reply_to_user:
-    await self.client.send_message(message.channel, '{} I\'ve added **{}** to the queue.'.format(user.mention, song.name))
+    for track in gmusic_tracks:
+      song = await player.queue_song(Player.GmusicSong, track['track'], user, message.channel, message.timestamp, gmusic=gmusic)
+      await report_song(song)
 
 
 @GMusicBot.command()
@@ -344,13 +380,14 @@ async def search(self, message, query):
     return
   results = gmusic.search(query, max_results=10)
   embed = discord.Embed(title='Results for {}'.format(query))
-  for song in results['song_hits']:
+  for i, song in enumerate(results['song_hits']):
     song = song['track']
     embed.add_field(
-      name=song['title'],
+      name='{}. {}'.format(i+1, song['title']),
       value='by {}'.format(song['artist']),
       inline=False
     )
+  previous_search_results[message.server.id] = results['song_hits']
   await self.client.send_message(message.channel, embed=embed)
 
 
