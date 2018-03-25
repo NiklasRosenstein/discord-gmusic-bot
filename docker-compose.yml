@@ -4,6 +4,7 @@ services:
     build: .
     volumes:
       - ./data:/app/data
+    restart: always
 x-docker-remote:
   project:
     name: discord-gmusic-bot
