@@ -34,6 +34,11 @@ class GMusicCredentials(db.Entity):
   username = Required(str)
   password = Required(str)
 
+  def update(self, username, password):
+    self.username = username
+    self.password = password
+    self.GMUSIC_INSTANCES.pop(self.server.id, None)
+
   def get_gmusic_client(self):
     try:
       return self.GMUSIC_INSTANCES[self.server.id]

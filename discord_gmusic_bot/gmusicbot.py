@@ -543,7 +543,7 @@ async def config(self, message, arg):
     await self.client.send_message(private_channel, '**Configuring Google Music credentials for server {} (`{}`)**'.format(message.server.name, message.server.id))
     gmusic = await get_gmusic_client(self.client, None, message.server)
     if gmusic:
-      await self.client.send_message(private_channel, 'You already have valid Google Music credentials configured. Do you want to overwrite them?')
+      await self.client.send_message(private_channel, 'You already have valid Google Music credentials configured. Say **yes** to overwrite them.')
       msg = await self.client.wait_for_message(author=user, channel=private_channel, timeout=10.0)
       if not msg:
         await self.client.send_message(private_channel, 'No response -- Aborted.')
@@ -582,8 +582,9 @@ async def config(self, message, arg):
     with models.session:
       server = models.Server.get_or_create(id=message.server.id)
       if server.gmusic_credentials:
-        server.gmusic_credentials.delete()
-      server.gmusic_credentials = models.GMusicCredentials(server=server, username=email, password=passwd)
+        server.gmusic_credentials.update(username=email, password=passwd)
+      else:
+        server.gmusic_credentials = models.GMusicCredentials(server=server, username=email, password=passwd)
       client = server.gmusic_credentials.get_gmusic_client()
       if not client:
         await self.client.send_message(private_channel, 'Unable to log-in to Google Music with these credentials.')
