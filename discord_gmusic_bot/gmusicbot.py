@@ -575,7 +575,10 @@ async def config(self, message, arg):
         await self.client.send_message(private_channel, 'I did not recognize this message as credentials. Please format them as `email:password` with no additional spaces.')
         continue
       break
-    email, passwd = msg.content.split(':', 1)
+    email, passwd = map(str.strip, msg.content.split(':', 1))
+    if not email or not passwd:
+      await self.client.send_message(private_channel, 'Sorry, that doesn\' look like the credentials format I was expecting.')
+      return
     with models.session:
       server = models.Server.get_or_create(id=message.server.id)
       if server.gmusic_credentials:
