@@ -353,7 +353,7 @@ async def queue(self, message, query, reply_to_user=False):
       song = await player.queue_song(Player.RawSong, url, user, message.channel, message.timestamp)
       await report_song(song)
     else:
-      await self.client.send_message(message.channel, 'That doesn\'t look like a Youtube URL.')
+      await self.client.send_message(message.channel, 'That doesn\'t look like a YouTube or SoundCloud URL.')
       return
   else:
     gmusic = await get_gmusic_client(self.client, message.channel, message.server)
@@ -363,6 +363,7 @@ async def queue(self, message, query, reply_to_user=False):
     if not results['song_hits']:
       await self.client.send_message(message.channel, '{} Sorry, seems like Google Music sucks.'.format(user.mention))
       return
+    gmusic_tracks.append(results['song_hits'][0])
 
   if gmusic_tracks:
     player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
@@ -397,13 +398,14 @@ async def play(self, message, query):
     await self.client.send_message(message.channel, '{} Join a voice channel, first.'.format(message.author.mention))
     return
 
-  player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
   if query:
     await queue(self, message, query, reply_to_user=True)
     return
 
   user = message.author
   await self.client.send_typing(message.channel)
+
+  player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
   if not await player.has_current_song() and not player.queue:
     await self.client.send_message(message.channel, '{} Playing a random song.'.format(user.mention))
     gmusic = await get_gmusic_client(self.client, message.channel, message.server)
