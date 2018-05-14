@@ -316,25 +316,6 @@ async def queue(self, message, query, reply_to_user=False):
     if not song.stream and reply_to_user:
       await self.client.send_message(message.channel, '{} I\'ve added **{}** to the queue.'.format(user.mention, song.name))
 
-  if query.startswith('#'):
-    try:
-      nums = [int(x) for x in query[1:].split(',')]
-    except ValueError:
-      await self.client.send_message(message.channel, '**Invalid format** – Expected format `#<num>[,<num>[...]]`')
-      return
-    results = previous_search_results.get(message.server.id)
-    if not results:
-      await self.client.send_message(message.channel, '**No previous search results.**')
-      return
-    invalid_indices = set()
-    for num in nums:
-      if (num-1) not in range(len(results)):
-        invalid_indices.add(num)
-      else:
-        gmusic_tracks.append(results[num-1])
-    if invalid_indices:
-      await self.client.send_message(message.channel, "**Note: Invalid track indices from previous search: {}**".format(invalid_indices))
-
   url = query.strip().lstrip('<').rstrip('>')
   info = urllib.parse.urlparse(url)
   if info.scheme and info.netloc and info.path:
@@ -359,11 +340,31 @@ async def queue(self, message, query, reply_to_user=False):
     gmusic = await get_gmusic_client(self.client, message.channel, message.server)
     if not gmusic:
       return
-    results = gmusic.search(query, max_results=10)
-    if not results['song_hits']:
-      await self.client.send_message(message.channel, '{} Sorry, seems like Google Music sucks.'.format(user.mention))
-      return
-    gmusic_tracks.append(results['song_hits'][0])
+
+    if query.startswith('#'):
+      try:
+        nums = [int(x) for x in query[1:].split(',')]
+      except ValueError:
+        await self.client.send_message(message.channel, '**Invalid format** – Expected format `#<num>[,<num>[...]]`')
+        return
+      results = previous_search_results.get(message.server.id)
+      if not results:
+        await self.client.send_message(message.channel, '**No previous search results.**')
+        return
+      invalid_indices = set()
+      for num in nums:
+        if (num-1) not in range(len(results)):
+          invalid_indices.add(num)
+        else:
+          gmusic_tracks.append(results[num-1])
+      if invalid_indices:
+        await self.client.send_message(message.channel, "**Note: Invalid track indices from previous search: {}**".format(invalid_indices))
+    else:
+      results = gmusic.search(query, max_results=10)
+      if not results['song_hits']:
+        await self.client.send_message(message.channel, '{} Sorry, seems like Google Music sucks.'.format(user.mention))
+        return
+      gmusic_tracks.append(results['song_hits'][0])
 
   if gmusic_tracks:
     player = await self.players.get_player_for_server(message.server, message.author.voice.voice_channel)
