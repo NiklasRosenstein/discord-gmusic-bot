@@ -2,3 +2,7 @@
 config.toml
 opus.dll
 song_cache
+node_modules/
+application/web/static
+data
+.venv

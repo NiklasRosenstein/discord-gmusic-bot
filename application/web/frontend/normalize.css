@@ -1,0 +1,8 @@
+html { height: 100%; }
+html, body {
+  padding: 0;
+  margin: 0;
+  font: 14px/1.5 'Open Sans', sans-serif;
+}
+html, body { display: flex; }
+body, #main { flex: 1; }
