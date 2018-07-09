@@ -25,6 +25,13 @@ Send `help` to get a list of available commands.
 2. Make sure to promote the Bot to a "Bot User"
 3. A Google Music Account plus an [app specific password](https://myaccount.google.com/apppasswords)
 
+### Bot Configuration
+Mention your bot (@your-bot-name) with the following commands to configure your music accounts.
+
+* ```config```Shows the configuration status of sound services.
+* ```config google-music``` Start a private chat with you to configure Google Music credentials.
+* ```config soundcloud```Start a private chat with you to setup your SoundCloud client ID.
+
 ### To do
 
 * Ability to bulk-queue songs (eg. from a YouTube playlist or multiple links)
