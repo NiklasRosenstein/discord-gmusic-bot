@@ -21,7 +21,7 @@ def main():
   if reloader_enabled:
     reloader = Reloader()
     if not reloader.is_inner():
-      argv = [sys.executable] + sys.argv
+      argv = [sys.executable] + getattr(sys, '__argv__', sys.argv)
       reloader.run_forever(argv)
       return
   else:
