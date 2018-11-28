@@ -2,3 +2,5 @@
 config.toml
 opus.dll
 song_cache
+.venv
+*.egg-info

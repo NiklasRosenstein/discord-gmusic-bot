@@ -19,7 +19,7 @@ def expose_property(func, member_name):
 class Session:
 
   def __init__(self, session=None, executor=None):
-    self._session = session
+    self._session = session or requests.Session()
     self._executor = executor
 
   auth = expose_property(lambda self: self._session, 'auth')
@@ -29,7 +29,7 @@ class Session:
 
   async def request(self, *args, **kwargs):
     return Response(await run_in_executor(self._executor,
-      self._session.request, *args, **kwargs))
+      self._session.request, *args, **kwargs), kwargs.get('stream', False))
 
   async def delete(self, *args, **kwargs):
     return await self.request('DELETE', *args, **kwargs)

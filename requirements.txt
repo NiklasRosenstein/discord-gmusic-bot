@@ -4,3 +4,4 @@ PyNaCl>=1.2.1
 youtube-dl>=2017.12.14
 toml>=0.9.3
 pony>=0.7.3
+soundcloud>=0.5.0
