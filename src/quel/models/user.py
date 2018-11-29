@@ -9,9 +9,6 @@ class User(db.Entity):
   name = orm.Required(str)
   avatar_url = orm.Optional(str)
 
-  # TODO @NiklasRosenstein Is there a way to not require reverse attributes?
-  queued_songs = orm.Set('QueuedSong')
-
   @classmethod
   def for_discord_user(cls, user, update=True):
     method = create_or_update if update else get_or_create

@@ -3,7 +3,6 @@ import abc
 import nr.types.named
 import urllib.parse
 
-from ..models import QueuedSong
 from typing import *
 
 

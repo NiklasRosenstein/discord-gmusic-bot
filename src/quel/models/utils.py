@@ -3,7 +3,7 @@
 def create_or_update(_entity, _key, **update):
   obj = get_or_create(_entity, _key, **update)
   if obj:
-    for key, value in updates.items():
+    for key, value in update.items():
       setattr(obj, key, value)
   return obj
 

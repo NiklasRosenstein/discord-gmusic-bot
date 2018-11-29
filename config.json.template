@@ -1,0 +1,11 @@
+{
+  "dbConfig": {
+    "provider": "sqlite",
+    "filename": "data/db.sqlite",
+    "create_db": true
+  },
+  "botConfig": {
+    "token": "...",
+    "inviteUrl": "https://discordapp.com/oauth2/authorize?client_id={CLIENT_ID}&scope=bot&permissions=3148800"
+  }
+}

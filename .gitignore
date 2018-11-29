@@ -1,6 +1,7 @@
 .nodepy
-config.toml
+config.json
 opus.dll
 song_cache
 .venv
 *.egg-info
+data/

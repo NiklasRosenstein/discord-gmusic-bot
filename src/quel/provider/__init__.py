@@ -1,6 +1,7 @@
 
+from .base import Provider, Song, ResolveError
 from .soundcloud import SoundCloudProvider
 
-providers = {
+available_providers = {
   'soundcloud': SoundCloudProvider
 }

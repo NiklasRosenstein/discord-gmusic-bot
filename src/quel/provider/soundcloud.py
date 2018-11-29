@@ -2,7 +2,6 @@
 import soundcloud
 
 from .base import Provider, ResolveError, Song
-from quel.models import QueuedSong
 from quel.aio.utils import run_in_executor
 
 

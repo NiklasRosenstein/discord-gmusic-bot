@@ -1,5 +1,5 @@
 gmusicapi>=11.0.0
-discord.py>=0.16.12
+https://github.com/Rapptz/discord.py/archive/async.zip#egg=discord.py[voice]
 PyNaCl>=1.2.1
 youtube-dl>=2017.12.14
 toml>=0.9.3
