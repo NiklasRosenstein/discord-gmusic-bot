@@ -28,10 +28,11 @@ class Provider(metaclass=abc.ABCMeta):
     pass
 
   @classmethod
-  def get_options(cls):
+  def get_options(cls) -> List[str]:
     code = cls.__init__.__code__
     return code.co_varnames[1:code.co_argcount]
 
+  @classmethod
   @abc.abstractmethod
   def get_provider_name(self) -> str:
     pass

@@ -2,7 +2,7 @@
 import soundcloud
 
 from .base import Provider, ResolveError, Song
-from quel.aio.utils import run_in_executor
+from quel.core.asyncio_utils import run_in_executor
 
 
 class SoundCloudProvider(Provider):
@@ -43,6 +43,7 @@ class SoundCloudProvider(Provider):
 
   # Provider overrides
 
+  @classmethod
   def get_provider_name(self):
     return 'SoundCloud'
 

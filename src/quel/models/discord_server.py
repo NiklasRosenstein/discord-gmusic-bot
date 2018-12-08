@@ -48,3 +48,7 @@ class DiscordServer(db.Entity):
   def set_provider_options(self, provider_id, options):
     providers = self.options.setdefault('providers', {})
     providers[provider_id] = options
+
+  def delete_provider_options(self, provider_id):
+    providers = self.options.setdefault('providers', {})
+    providers.pop(provider_id, None)

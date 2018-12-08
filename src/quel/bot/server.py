@@ -6,9 +6,9 @@ for playing music in a Discord channel.
 
 
 from pony import orm
-from .aio.utils import local
-from .models import DiscordServer, QueuedSong
-from .provider import available_providers
+from quel.core.asyncio_utils import async_local
+from quel.models import DiscordServer, QueuedSong
+from quel.provider import available_providers
 
 import asyncio
 import logging
@@ -23,10 +23,6 @@ class ServerManager:
   def __init__(self, client):
     self.servers = {}
     self.client = client
-    self.locals = local()
-
-  def set_local_channel(self, channel):
-    self.locals.channel = channel
 
   async def get_server_data(self, server):
     data = self.servers.get(server.id)
@@ -65,6 +61,7 @@ class ServerData:
     self._manager = weakref.ref(manager)
     self.logger = logging.getLogger(__name__ + '.ServerData(id={})'.format(id))
     self.providers = {}
+    self.provider_errors = {}
     self.id = id
     self.voice_channel = None
     self.voice_client = None
@@ -77,6 +74,7 @@ class ServerData:
 
   async def update_providers(self):
     self.providers = {}
+    self.provider_errors = {}
     with orm.db_session() as fp:
       self.logger.debug('Reinstalling providers ...')
       server = self.get_db_object()
@@ -85,16 +83,14 @@ class ServerData:
         need_options = provider_cls.get_options()
         missing_options = [k for k in need_options if k not in options]
         if missing_options:
-          self.logger.info('Missing options for provider "{}" -- can not be installed. (missing_options: {})'
-            .format(provider_id, missing_options))
+          self.provider_errors[provider_id] = 'Missing options: ' + str(missing_options)
           continue
 
         kwargs = {k: options[k] for k in need_options if k in options}
         try:
           provider = provider_cls(**kwargs)
         except Exception as exc:
-          self.logger.exception('Exception creating provider "{}"'.format(provider_id))
-          await self.manager.message('Error: Unable to create provider "{}". (error: {})'.format(provider_id, exc))
+          self.provider_errors[provider_id] = 'Error creating provider: ' + str(exc)
           continue
 
         self.providers[provider_id] = provider
@@ -135,14 +131,12 @@ class ServerData:
       return
 
     if not self.voice_channel:
-      await self.manager.message('Note: Have not joined a voice channel yet.')
-      return
+      raise PlayError('You have not joined a voice channel.')
 
     provider = self.providers.get(song.provider_id)
     if not provider:
-      await self.manager.message('Warning: Provider "{}" for song "{}" '
-        'is not installed.'.format(song.provider, song.url))
-      return
+      raise PlayError('Provider "{}" for song "{}" is not installed.'
+        .format(song.provider, song.url))
 
     loop = asyncio.get_running_loop()
     stream_url = await provider.get_stream_url(song)
@@ -175,3 +169,7 @@ class ServerData:
         self, join_channel, move=False)
     await self.resume()
     return song
+
+
+class PlayError(Exception):
+  pass

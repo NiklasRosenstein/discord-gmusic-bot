@@ -103,6 +103,27 @@ class EventHandler:
     pass
 
 
+class WeakHandlerWrapper(EventHandler):
+
+  def __init__(self, handler):
+    self._handler = weakref.ref(handler)
+
+  @property
+  def handler(self):
+    return self._handler() if self._handler is not None else None
+
+  def connect(self, bot):
+    handler = self.handler
+    if handler:
+      handler.connect(bot)
+
+  async def handle_event(self, event_type, *args, **kwargs):
+    handler = self.handler
+    if handler is not None:
+      return await handler.handle_event(event_type, *args, **kwargs)
+    return False
+
+
 class MessageHandler(EventHandler):
 
   async def match_message(self, message):
@@ -162,6 +183,9 @@ class CommandHandler(MessageHandler):
 
   preconditions = []
 
+  async def before_command(self, message, command, match):
+    pass
+
   async def match_message(self, message):
     if message.author == self.client.user:
       return False
@@ -177,6 +201,7 @@ class CommandHandler(MessageHandler):
 
   async def handle_message(self, message):
     match = self.local.match
+    await self.before_command(message, self.local.command, match)
     await self.local.command.func(self, *match.args, **match.kwargs)
 
 
