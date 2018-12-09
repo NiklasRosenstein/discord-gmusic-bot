@@ -6,9 +6,9 @@ import re
 
 class Command(MemberEventHandler):
 
-  def __init__(self, func, regex, preconditions=None, case_sensitive=False):
+  def __init__(self, func, regex, preconditions=None, case_sensitive=False, flags=0):
     super().__init__(func)
-    self.regex = re.compile(regex, 0 if case_sensitive else re.I)
+    self.regex = re.compile(regex, flags | (0 if case_sensitive else re.I))
     self.preconditions = preconditions or []
 
   async def handle_event(self, instance):

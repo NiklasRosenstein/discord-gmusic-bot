@@ -168,12 +168,13 @@ class QuelBehavior(EventMultiplexer):
         embed.add_field(name=song.title, value=song.url)
     await event.reply(embed=embed)
 
-  @command(regex='(queue|play)\s+(.*)')
+  @command(regex='(queue|play)\s+(.*)', flags=re.S)
   async def play(self, command, arg):
     guild = get_guild()
     errors = []
     songs = []
     for url in map(str.strip, arg.split(';')):
+      if not url: continue
       if url.startswith('<') and url.endswith('>'):
         url = url[1:-1]
       urlinfo = urlparse(url)
@@ -291,7 +292,7 @@ class QuelBehavior(EventMultiplexer):
     embed = discord.Embed(title='Queued songs')
     for song in guild.queue:
       user = await self.client.get_user_info(song.user_id)
-      embed.add_field(name=song.title, value='{} (queued by {})'.format(song.artist, user.mention))
+      embed.add_field(name=song.title, value='{} (queued by {})'.format(song.artist, user.mention), inline=False)
       lines.append('{} - {} (queued by {})'.format(song.title, song.artist, user.mention))
     try:
       await event.reply(embed=embed)
