@@ -174,6 +174,8 @@ class QuelBehavior(EventMultiplexer):
     errors = []
     songs = []
     for url in map(str.strip, arg.split(';')):
+      if url.startswith('<') and url.endswith('>'):
+        url = url[1:-1]
       urlinfo = urlparse(url)
       if not urlinfo.netloc or not urlinfo.scheme:
         errors.append('Invalid URL `{}`'.format(url))
