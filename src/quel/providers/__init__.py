@@ -36,10 +36,10 @@ class ProviderInstance:
   async def search(self, term, max_results):
     return; yield
 
-  def match_url(self, url, urlinfo):
+  def match_url(self, url, urlinfo) -> Tuple[bool, Any]:
     raise NotImplementedError
 
-  async def resolve_url(self, url):
+  async def resolve_url(self, url, match_data):
     raise NotImplementedError
 
   async def get_stream_url(self, song):
@@ -63,3 +63,7 @@ class Song(Named):
   image_url: Optional[str] = ''
   duration: Optional[int] = ''
   purchase_url: Optional[str] = ''
+
+
+class ResolveError(Exception):
+  pass

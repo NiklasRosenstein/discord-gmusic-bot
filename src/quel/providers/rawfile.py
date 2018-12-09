@@ -23,9 +23,9 @@ class RawFileProvider(Provider, ProviderInstance):
 
   def match_url(self, url, urlinfo):
     ext = urlinfo.path.rpartition('.')[-1]
-    return ext in ('mp3', 'wav')
+    return ext in ('mp3', 'wav'), None
 
-  async def resolve_url(self, url):
+  async def resolve_url(self, url, match_data):
     title = posixpath.basename(urlparse(url).path)
     return Song(url, title=title, artist='Unknown')
 

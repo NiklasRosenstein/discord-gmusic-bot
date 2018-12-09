@@ -63,7 +63,7 @@ class SoundCloudInstance(ProviderInstance):
 
   def match_url(self, url, urlinfo):
     # TODO: More sophisticated checking if the URL points to a song.
-    return urlinfo.netloc == 'soundcloud.com'
+    return urlinfo.netloc == 'soundcloud.com', None
 
   async def search(self, term, max_results):
     songs_yielded = 0
@@ -79,7 +79,7 @@ class SoundCloudInstance(ProviderInstance):
           break
       offset += max_results
 
-  async def resolve_url(self, url):
+  async def resolve_url(self, url, match_data):
     info = await self._get('/resolve', url=url)
     return self._convert_resource(info)
 

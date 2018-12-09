@@ -8,6 +8,7 @@ from quel.core.handlers import on, command
 from quel.core.reloader import Reloader
 from quel.providers.rawfile import RawFileProvider
 from quel.providers.soundcloud import SoundCloudProvider
+from quel.providers.youtube_dl import YoutubeDlProvider
 from urllib.parse import urlparse
 
 import argparse
@@ -22,7 +23,8 @@ import sys
 
 providers = [
   SoundCloudProvider(),
-  RawFileProvider()
+  RawFileProvider(),
+  YoutubeDlProvider(allow_video_stream=False)
 ]
 
 logger = logging.getLogger(__name__)
@@ -177,8 +179,9 @@ class QuelBehavior(EventMultiplexer):
         errors.append('Invalid URL `{}`'.format(url))
       else:
         for provider in guild.providers:
-          if provider.match_url(url, urlinfo):
-            song = await provider.resolve_url(url)
+          matches, match_data = provider.match_url(url, urlinfo)
+          if not provider.error and matches:
+            song = await provider.resolve_url(url, match_data)
             song = db.QueuedSong(
               user_id=event.message.author.id,
               provider_id=provider.id,
