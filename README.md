@@ -5,7 +5,8 @@ Quel is a simple music bot for Discord and is the successor of *discord-gmusic-b
 ## Features
 
 * Plays from MP3/WAV attachments and URLs
-* Supports searching and playing from SoundCloud (YouTube and GoogleMusic are planned)
+* Supports searching and playing from SoundCloud
+* Plays anything supported by YouTube DL
 
 ## Installation
 
