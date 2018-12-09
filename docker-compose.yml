@@ -7,4 +7,4 @@ services:
     restart: always
 x-docker-remote:
   project:
-    name: discord-gmusic-bot
+    name: quel
