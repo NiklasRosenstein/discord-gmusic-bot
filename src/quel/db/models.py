@@ -23,7 +23,7 @@ class Guild(db.Entity):
   providers = durable_member(list)
   queue = durable_member(list)
   voice_client = durable_member(lambda: None)
-  skipflag = durable_member(bool)  # Workaround to ignore a skip from a callback
+  lock = durable_member(asyncio.Lock)
 
   def __init__(self, id, config=None):
     super().__init__(id=id, config=config or {}, volume=0.5)

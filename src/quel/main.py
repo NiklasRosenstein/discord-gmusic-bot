@@ -3,7 +3,7 @@
 from pony import orm
 from quel import db
 from quel.db.utils import create_or_update
-from quel.core.client import Client, EventMultiplexer, EventType, event, propagate_event
+from quel.core.client import Client, EventMultiplexer, EventType, event, get_event, set_event, propagate_event
 from quel.core.handlers import on, command
 from quel.core.reloader import Reloader
 from quel.providers.rawfile import RawFileProvider
@@ -38,6 +38,30 @@ def get_guild(guild_id=None):
   return create_or_update(db.Guild, {'id': guild_id})
 
 
+class GuildSongResumer:
+
+  def __init__(self, quel):
+    self.queue = asyncio.Queue()
+    self.quel = quel
+    self.task = None
+
+  def start(self):
+    self.task = asyncio.create_task(self.run())
+
+  async def run(self):
+    while True:
+      guild, ev = await self.queue.get()
+      try:
+        with set_event(ev):
+          await self.quel.resume()
+      except:
+        logger.exception('Exception in GuildSongResumer.run()')
+
+  async def put(self, guild):
+    await self.queue.put((guild, get_event()))
+
+
+
 class QuelBehavior(EventMultiplexer):
 
   nickname = '♪♪ Quel ♪♪'
@@ -45,6 +69,7 @@ class QuelBehavior(EventMultiplexer):
   def __init__(self, config):
     super().__init__()
     self.config = config
+    self.song_resumer = GuildSongResumer(self)
 
   def check_mention(self):
     match = re.match('^\s*<!?@(\d+)>\s*', event.text)
@@ -82,6 +107,7 @@ class QuelBehavior(EventMultiplexer):
     for guild in self.client.guilds:
       await self.update_nick(guild)
       await self.provider_reload(guild)
+    self.song_resumer.start()
 
   @on('guild_join')
   async def guild_join(self):
@@ -209,43 +235,43 @@ class QuelBehavior(EventMultiplexer):
   @command(regex='resume')
   async def resume(self):
     guild = get_guild()
-
-    if guild.voice_client and guild.voice_client.source:
-      guild.voice_client.resume()
-      return
-
-    if not guild.queue:
-      if guild.voice_client:
-        await guild.voice_client.disconnect()
-        guild.voice_client = None
-      return
-
-    song = guild.queue.pop(0)
-    provider = guild.find_provider(song.provider_id)
-    if not provider:
-      logger.error('Provider for queued Song no longer exists: {}'.format(song.provider_id))
-      return
-
-    if not guild.voice_client:
-      voice_state = event.message.author.voice
-      voice_channel = voice_state.channel if voice_state else None
-      if not voice_channel:
-        await event.reply('Join a voice channel and type `resume` to start playing music!')
+    async with guild.lock:
+      if guild.voice_client and guild.voice_client.source:
+        guild.voice_client.resume()
         return
-      guild.voice_client = await voice_channel.connect()
-      # We wait for a second as otherwise we get speed up music right after
-      # the bot joined.
-      await asyncio.sleep(1)
 
-    stream_url = await provider.get_stream_url(song)
+      if not guild.queue:
+        if guild.voice_client:
+          await guild.voice_client.disconnect()
+          guild.voice_client = None
+        return
 
-    # Call skip() after the song is complete. We need to maintain the
-    # event state.
-    do_skip = propagate_event(self.skip)
-    loop = asyncio.get_running_loop()
-    after = lambda _: asyncio.run_coroutine_threadsafe(do_skip(), loop)
+      song = guild.queue.pop(0)
+      provider = guild.find_provider(song.provider_id)
+      if not provider:
+        logger.error('Provider for queued Song no longer exists: {}'.format(song.provider_id))
+        return
 
-    await guild.start_stream(stream_url, after)
+      if not guild.voice_client:
+        voice_state = event.message.author.voice
+        voice_channel = voice_state.channel if voice_state else None
+        if not voice_channel:
+          await event.reply('Join a voice channel and type `resume` to start playing music!')
+          return
+        guild.voice_client = await voice_channel.connect()
+        # We wait for a second as otherwise we get speed up music right after
+        # the bot joined.
+        await asyncio.sleep(1)
+
+      stream_url = await provider.get_stream_url(song)
+
+      # Call skip() after the song is complete. We need to maintain the
+      # event state.
+      do_skip = propagate_event(lambda: self.song_resumer.put(guild))
+      loop = asyncio.get_running_loop()
+      after = lambda _: asyncio.run_coroutine_threadsafe(do_skip(), loop)
+
+      await guild.start_stream(stream_url, after)
 
     user = await self.client.get_user_info(song.user_id)
     await event.reply('Now playing! **{}** - {} (queued by {})'.format(song.title, song.artist, user.mention))
@@ -253,35 +279,31 @@ class QuelBehavior(EventMultiplexer):
   @command(regex='pause')
   async def pause(self):
     guild = get_guild()
-    if guild.voice_client and guild.voice_client.is_playing():
-      guild.voice_client.pause()
+    async with guild.lock:
+      if guild.voice_client and guild.voice_client.is_playing():
+        guild.voice_client.pause()
 
   @command(regex='(skip)')
   async def skip(self, as_command=None):
     guild = get_guild()
-    if guild.skipflag:
-      guild.skipflag = False
-      return
-    if guild.voice_client and guild.voice_client.is_playing():
-      guild.voice_client.stop()
-      if as_command:
-        # Ignore the next skip command triggered by the previous playback
-        # "after" callback.
-        guild.skipflag = True
-    await self.resume()
+    async with guild.lock:
+      if guild.voice_client and guild.voice_client.is_playing():
+        guild.voice_client.stop()
 
   @command(regex='clear\s+queue')
   async def clear_queue(self):
     guild = get_guild()
-    guild.queue = []
+    async with guild.lock:
+      guild.queue = []
 
   @command(regex='stop')
   async def stop(self):
     guild = get_guild()
-    if guild.voice_client:
-      guild.voice_client.stop()
-      await guild.voice_client.disconnect()
-      guild.voice_client = None
+    async with guild.lock:
+      if guild.voice_client:
+        guild.voice_client.stop()
+        await guild.voice_client.disconnect()
+        guild.voice_client = None
 
   @command(regex='queue')
   async def queue(self):
@@ -290,10 +312,11 @@ class QuelBehavior(EventMultiplexer):
 
     lines = ['**Queue**']
     embed = discord.Embed(title='Queued songs')
-    for song in guild.queue:
-      user = await self.client.get_user_info(song.user_id)
-      embed.add_field(name=song.title, value='{} (queued by {})'.format(song.artist, user.mention), inline=False)
-      lines.append('{} - {} (queued by {})'.format(song.title, song.artist, user.mention))
+    async with guild.lock:
+      for song in guild.queue:
+        user = await self.client.get_user_info(song.user_id)
+        embed.add_field(name=song.title, value='{} (queued by {})'.format(song.artist, user.mention), inline=False)
+        lines.append('{} - {} (queued by {})'.format(song.title, song.artist, user.mention))
     try:
       await event.reply(embed=embed)
     except discord.Forbidden:
