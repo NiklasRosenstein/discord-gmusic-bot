@@ -1,3 +1,4 @@
+# coding: utf8
 
 from pony import orm
 from quel import db
@@ -37,6 +38,8 @@ def get_guild(guild_id=None):
 
 class QuelBehavior(EventMultiplexer):
 
+  nickname = '♪♪ Quel ♪♪'
+
   def __init__(self, config):
     super().__init__()
     self.config = config
@@ -61,6 +64,13 @@ class QuelBehavior(EventMultiplexer):
         return False
     return await super().handle_event()
 
+  async def update_nick(self, guild):
+    if not guild.me.nick:
+      try:
+        await guild.me.edit(nick=self.nickname)
+      except discord.Forbidden:
+        pass
+
   @on('ready')
   async def ready(self):
     client_id = (await self.client.application_info()).id
@@ -68,8 +78,12 @@ class QuelBehavior(EventMultiplexer):
     logger.info('Invite URL: {}'.format(invite_url))
     logger.info('Loading providers for all servers.')
     for guild in self.client.guilds:
-      # TODO @NiklasRosenstein Set bot nickname if no nickname is set.
+      await self.update_nick(guild)
       await self.provider_reload(guild)
+
+  @on('guild_join')
+  async def guild_join(self):
+    await self.update_nick(event.guild)
 
   @on('message')
   async def handle_plain_attachment(self):

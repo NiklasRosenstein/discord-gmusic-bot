@@ -15,6 +15,7 @@ class EventType(enum.Enum):
   ready = 0
   message = 1
   error = 2
+  guild_join = 3
 
 
 class Event:
@@ -56,6 +57,10 @@ def prepare_ready(client):
 
 def prepare_message(client, message):
   return MessageEvent(client, message)
+
+
+def prepare_guild_join(client, guild):
+  return Event(EventType.guild_join, client, guild=guild)
 
 
 #def prepare_error(event_method, *args, **kwargs):
