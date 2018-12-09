@@ -55,7 +55,8 @@ async def handle_plain_attachment():
       song_urls.append(url)
 
   if song_urls:
-    await play(';'.join(song_urls))
+    await play('play', ';'.join(song_urls))
+  return True
 
 
 @command(client, regex='config\s+set\s+([\w\d\.]+)\s+(.*)')
