@@ -6,6 +6,7 @@ from quel.core.client import Client
 from quel.core.event import event
 from quel.core.handlers import on, command
 from quel.core.reloader import Reloader
+from quel.providers.rawfile import RawFileProvider
 from quel.providers.soundcloud import SoundCloudProvider
 from urllib.parse import urlparse
 
@@ -20,7 +21,8 @@ import sys
 client = Client()
 
 providers = [
-  SoundCloudProvider()
+  SoundCloudProvider(),
+  RawFileProvider()
 ]
 
 logger = logging.getLogger(__name__)
@@ -39,6 +41,21 @@ async def ready():
   logger.info('Loading providers for all servers.')
   for guild in client.guilds:
     await provider_reload(guild)
+
+
+@on(client, 'message')
+async def handle_plain_attachment():
+  if event.text or not event.message.attachments:
+    return False
+
+  song_urls = []
+  for attachment in event.message.attachments:
+    url = attachment.url
+    if RawFileProvider().match_url(url, urlparse(url)):
+      song_urls.append(url)
+
+  if song_urls:
+    await play(';'.join(song_urls))
 
 
 @command(client, regex='config\s+set\s+([\w\d\.]+)\s+(.*)')
@@ -113,8 +130,8 @@ async def search(provider_name, term):
   await event.reply(embed=embed)
 
 
-@command(client, regex='play\s+(.*)')
-async def handle_url(arg):
+@command(client, regex='(queue|play)\s+(.*)')
+async def play(command, arg):
   guild = get_guild()
   errors = []
   songs = []
@@ -144,7 +161,8 @@ async def handle_url(arg):
     lines.append('**{}** - {}'.format(song.title, song.artist))
     guild.queue_song(song)
 
-  await resume()
+  if command == 'play':
+    await resume()
 
 
 @command(client, regex='resume')
@@ -197,6 +215,12 @@ async def pause():
   await resume()
 
 
+@command(client, regex='clear\s+queue')
+async def clear_queue():
+  guild = get_guild()
+  guild.queue = []
+
+
 @command(client, regex='stop')
 async def stop():
   guild = get_guild()
@@ -211,10 +235,17 @@ async def queue():
   with orm.db_session:
     guild = get_guild()
 
+  lines = ['**Queue**']
   embed = discord.Embed(title='Queued songs')
   for song in guild.queue:
-    embed.add_field(name=song.title, value=song.artist)
-  await event.reply(embed=embed)
+    user = await client.get_user_info(song.user_id)
+    embed.add_field(name=song.title, value='{} (queued by {})'.format(song.artist, user.mention))
+    lines.append('{} - {} (queued by {})'.format(song.title, song.artist, user.mention))
+  try:
+    await event.reply(embed=embed)
+  except discord.Forbidden:
+    await event.reply('\n'.join(lines))
+
 
 
 @command(client, regex='reload')
@@ -236,6 +267,11 @@ async def config_conversation():
               'private. Use this to set up credentials for music providers.')
   self.user_for_server[user.id] = self.local.message.server
 """
+
+
+@command(client, regex='.*')
+async def fallback():
+  await event.reply('{} ?'.format(event.message.author.mention))
 
 
 def main():
