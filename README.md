@@ -1,47 +1,43 @@
-## discord-gmusic-bot (WIP)
+# Quel
 
-A Discord bot that plays music via Google Play Music or Youtube.
+Quel is a simple music bot for Discord and is the successor of *discord-gmusic-bot*.
 
-### Usage
+## Features
 
-Either mention `@discord-gmusic-bot` or create a separate channel that
-contains the string `discord-gmusic-bot` in its title to talk to the bot.
-Send `help` to get a list of available commands.
+* Plays from MP3/WAV attachments and URLs
+* Supports searching and playing from SoundCloud (YouTube and GoogleMusic are planned)
 
-<p align="center">
-  <img src="https://i.imgur.com/1HFDCmY.png"/>
-<p>
+## Installation
 
-### Get Started
+You need to register a Discord bot and turn it into a "bot user".
 
-    $ cp config.example.toml config.toml && $(EDITOR) config.toml
-    $ docker-compose up --build
-    [...]
-    INFO:discord-gmusic-bot:        https://discordapp.com/oauth2/authorize?client_id=282709421955576523&scope=bot&permissions=3148800
+1. Clone this repository
+2. Copy the `config.json.template` to a file named `config.json` and fill in the Discord token
+3. Run `docker-compose up -d`
 
-### Requirements
+## Usage
 
-1. Your [own Discord bot](https://discordapp.com/developers/applications/me/create)
-2. Make sure to promote the Bot to a "Bot User"
-3. A Google Music Account plus an [app specific password](https://myaccount.google.com/apppasswords)
+The bot currently reacts on messages when it was mentioned at the beginning of the message, or
+messages sent to a channel that contains the string "Quel".
 
-### Bot Configuration
-Mention your bot (@your-bot-name) with the following commands to configure your music accounts.
+### Setting up the SoundCloud Client ID
 
-* ```config```Shows the configuration status of sound services.
-* ```config google-music``` Start a private chat with you to configure Google Music credentials.
-* ```config soundcloud```Start a private chat with you to setup your SoundCloud client ID.
+Go to https://soundcloud.com, open your browser's network tab and copy the `client_id` that is
+sent by SoundCloud in most requests. Paste this ID below when sending the bot the following command:
 
-### To do
+    config set soundcloud.client_id <client_id>
 
-* Ability to bulk-queue songs (eg. from a YouTube playlist or multiple links)
-* Support YouTube and Google Music Playlists
-* Understand exclamation mark in `play <query>!` to immediately play the song
-* Add commands to remove/reorder items in the queue
-* Maybe use [tizonia](https://github.com/tizonia/tizonia-openmax-il) as the
-  music streaming backend
+You can check for the status of all available providers using the `provider status` command.
 
-### Useful Tools
+### Playing/queueing/searching
+
+The `play <urls>` and `queue [<urls>]` commands accept one or more URLs (separated by semicolons `;`). Basic
+controls are available with the `resume`, `pause`, `stop`, `volume [<vol>]` and `clear queue` commands.
+
+The `search <term>` command can be used to search all available providers using a search term. You
+can search only a specific provider using the syntax `search <provider>: <term>`.
+
+## Useful Development Links
 
 * https://discordapi.com/permissions.html
 * https://leovoel.github.io/embed-visualizer/
