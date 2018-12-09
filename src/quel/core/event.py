@@ -1,5 +1,6 @@
 
 import enum
+import functools
 
 
 class EventType(enum.Enum):
@@ -26,4 +27,20 @@ class MessageEvent(Event):
 
 
 from .utils import async_local_proxy
-event, set_event = async_local_proxy()
+event, get_event, set_event = async_local_proxy()
+
+
+def propagate_event(func):
+  """
+  Wraps a coroutine function so that it will have the same event object as
+  the one that is assigned at the time that this function is called. Useful
+  if you need to use #asyncio.run_coroutine_threadsafe() but want to maintain
+  the #event state.
+  """
+
+  ev_obj = get_event()
+  @functools.wraps(func)
+  async def wrapper(*args, **kwargs):
+    with set_event(ev_obj):
+      return await func(*args, **kwargs)
+  return wrapper

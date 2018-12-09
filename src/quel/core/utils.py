@@ -106,7 +106,10 @@ def async_local_proxy():
     finally:
       stack.pop()
 
-  return werkzeug.local.LocalProxy(lambda: local.stack[-1]), setter
+  def getter():
+    return local.stack[-1]
+
+  return werkzeug.local.LocalProxy(getter), getter, setter
 
 
 class async_rlock(asyncio.Lock):

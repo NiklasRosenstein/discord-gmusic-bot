@@ -3,7 +3,7 @@ from pony import orm
 from quel import db
 from quel.db.utils import create_or_update
 from quel.core.client import Client
-from quel.core.event import event
+from quel.core.event import event, propagate_event
 from quel.core.handlers import on, command
 from quel.core.reloader import Reloader
 from quel.providers.rawfile import RawFileProvider
@@ -11,6 +11,7 @@ from quel.providers.soundcloud import SoundCloudProvider
 from urllib.parse import urlparse
 
 import argparse
+import asyncio
 import discord
 import logging
 import json
@@ -195,7 +196,14 @@ async def resume():
     return
 
   stream_url = await provider.get_stream_url(song)
-  await guild.start_stream(stream_url)
+
+  # Call skip() after the song is complete. We need to maintain the
+  # event state.
+  do_skip = propagate_event(skip)
+  loop = asyncio.get_running_loop()
+  after = lambda _: asyncio.run_coroutine_threadsafe(do_skip(), loop)
+
+  await guild.start_stream(stream_url, after)
 
   user = await client.get_user_info(song.user_id)
   await event.reply('Now playing! **{}** - {} (queued by {})'.format(song.title, song.artist, user.mention))
@@ -209,7 +217,7 @@ async def pause():
 
 
 @command(client, regex='skip')
-async def pause():
+async def skip():
   guild = get_guild()
   if guild.voice_client:
     guild.voice_client.stop()

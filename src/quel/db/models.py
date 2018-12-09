@@ -52,12 +52,12 @@ class Guild(db.Entity):
     assert isinstance(song, QueuedSong)
     self.queue.append(song)
 
-  async def start_stream(self, stream_url):
+  async def start_stream(self, stream_url, after=None):
     assert self.voice_client
     loop = asyncio.get_running_loop()
     source = discord.FFmpegPCMAudio(stream_url, options='-bufsize 128k')
     source = discord.PCMVolumeTransformer(source, self.volume)
-    self.voice_client.play(source)
+    self.voice_client.play(source, after=after)
 
   def set_volume(self, volume):
     volume = max(0.0, min(1.0, float(volume)))
