@@ -1,4 +1,4 @@
-# Quel
+# ♪♪ Quel ♪♪
 
 Quel is a simple music bot for Discord and is the successor of *discord-gmusic-bot*.
 
