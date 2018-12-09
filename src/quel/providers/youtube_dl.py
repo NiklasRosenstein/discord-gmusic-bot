@@ -47,7 +47,7 @@ class YoutubeDlProviderInstance(ProviderInstance):
       raise ResolveError('No suitable tracks found')
 
     # TODO @NiklasRosenstein replace this poor mans method of finding the best quality format
-    track = max(audio_tracks, key=lambda x: x['filesize'])
+    track = max(tracks, key=lambda x: x['filesize'])
     thumbnail = next((x['url'] for x in data['thumbnails']), None)
 
     return Song(
