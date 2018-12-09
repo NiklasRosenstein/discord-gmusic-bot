@@ -5,3 +5,4 @@ song_cache
 .venv
 *.egg-info
 data/
+*.sqlite

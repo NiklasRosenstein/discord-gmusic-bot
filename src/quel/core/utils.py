@@ -1,6 +1,8 @@
 
 import asyncio
+import contextlib
 import functools
+import werkzeug.local
 
 
 def async_partial(func, *pargs, **pkwargs):
@@ -45,17 +47,22 @@ class async_local:
   A #threading.local implementation for coroutines.
   """
 
-  def __init__(self):
+  def __init__(self, defaults=None):
     self.__data = {}
+    self.__defaults = defaults or {}
 
   def __get_dict(self, task=None):
     if task is None:
       task = asyncio.Task.current_task()
+      if task is None:
+        raise RuntimeError('no current task')
     try:
       return self.__data[id(task)]
     except KeyError:
       data = self.__data[id(task)] = {}
       task.add_done_callback(lambda t: self.__data.pop(id(t)))
+      for key, value in self.__defaults.items():
+        data[key] = value()
       return data
     finally:
       del task
@@ -79,6 +86,27 @@ class async_local:
       del data[name]
     except KeyError:
       raise AttributeError(name)
+
+
+def async_local_proxy():
+  """
+  Creates a new #werkzeug.local.LocalProxy object which stores its data on
+  an #async_local. The value of this proxy can be set with the setter function
+  (note: returns a context manager).
+  """
+
+  local = async_local(defaults={'stack': lambda: [None]})
+
+  @contextlib.contextmanager
+  def setter(new_value):
+    stack = local.stack
+    stack.append(new_value)
+    try:
+      yield
+    finally:
+      stack.pop()
+
+  return werkzeug.local.LocalProxy(lambda: local.stack[-1]), setter
 
 
 class async_rlock(asyncio.Lock):

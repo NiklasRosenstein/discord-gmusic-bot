@@ -1,19 +1,36 @@
 
-import soundcloud
+from . import Provider, ProviderInstance, Song
+from quel.core.utils import run_in_executor
 
-from .base import Provider, ResolveError, Song
-from quel.core.asyncio_utils import run_in_executor
+import soundcloud
 
 
 class SoundCloudProvider(Provider):
 
-  def __init__(self, client_id):
-    self._client = soundcloud.Client(client_id=client_id)
+  id = 'soundcloud'
+  name = 'SoundCloud'
+
+  def get_option_names(self):
+    return ['client_id']
+
+  def instantiate(self, options):
+    return SoundCloudInstance(self, options.get('client_id', None))
+
+
+class SoundCloudInstance(ProviderInstance):
+
+  def __init__(self, provider, client_id):
+    super().__init__(provider)
+    if not client_id:
+      self.error = 'Missing client ID.'
+      self.client = None
+    else:
+      self._client = soundcloud.Client(client_id=client_id)
 
   async def _get(self, *args, **kwargs):
     return await run_in_executor(None, lambda: self._client.get(*args, **kwargs))
 
-  def _convert_resource(self, resource: soundcloud.resource.Resource) -> Song:
+  def _convert_resource(self, resource: soundcloud.resource.Resource) -> 'Song':
     """
     Helper function that converts a SoundCloud resource that represents a
     song to a #Song object. if the resource does not represent a song that
@@ -41,19 +58,12 @@ class SoundCloudProvider(Provider):
       purchase_url = resource.purchase_url,
     )
 
-  # Provider overrides
-
-  @classmethod
-  def get_provider_name(self):
-    return 'SoundCloud'
-
-  def does_support_search(self):
+  def supports_search(self):
     return True
 
-  @classmethod
-  def matches_url(self, url, urlinfo):
-    if urlinfo.netloc == 'soundcloud.com':
-      return True
+  def match_url(self, url, urlinfo):
+    # TODO: More sophisticated checking if the URL points to a song.
+    return urlinfo.netloc == 'soundcloud.com'
 
   async def search(self, term, max_results):
     songs_yielded = 0
@@ -69,7 +79,7 @@ class SoundCloudProvider(Provider):
           break
       offset += max_results
 
-  async def resolve(self, url):
+  async def resolve_url(self, url):
     info = await self._get('/resolve', url=url)
     return self._convert_resource(info)
 
