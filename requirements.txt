@@ -1,6 +1,8 @@
 PyNaCl>=1.2.1
 pony>=0.7.3
 soundcloud>=0.5.0
+werkzeug>=0.14.1
+nr.types>=1.1.1
 
 # Py 3.7
 git+https://github.com/Rapptz/discord.py.git@rewrite#egg=discord.py[voice]

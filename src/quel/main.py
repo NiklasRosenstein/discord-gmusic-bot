@@ -280,6 +280,7 @@ def main():
   parser.add_argument('-c', '--config', default='config.json')
   parser.add_argument('-v', '--verbose', action='store_true')
   parser.add_argument('-r', '--reload', action='store_true')
+  parser.add_argument('--prod', '--production', dest='production', action='store_true')
   args = parser.parse_args()
 
   with open(args.config) as fp:
@@ -301,8 +302,16 @@ def main():
   db.db.bind(**config['dbConfig'])
   db.db.generate_mapping(create_tables=True)
 
+  bot_config = config['botConfig']
+  if 'token' in bot_config:
+    token = bot_config['token']
+  elif args.production:
+    token = bot_config['productionToken']
+  else:
+    token = bot_config['developmentToken']
+
   logger.info('Starting ...')
-  client.run(config['botConfig']['token'])
+  client.run(token)
   logger.info('Bye bye.')
 
 
