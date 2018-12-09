@@ -248,6 +248,14 @@ async def queue():
     await event.reply('\n'.join(lines))
 
 
+@command(client, regex='volume(?:\s+(\d+))?')
+async def volume(value):
+  guild = get_guild()
+  if value is None:
+    await event.reply('Current volume is **{}**'.format(int(round(guild.volume * 100))))
+  else:
+    guild.set_volume(int(value) / 100)
+
 
 @command(client, regex='reload')
 async def reload():

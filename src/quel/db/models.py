@@ -22,6 +22,7 @@ class Guild(db.Entity):
   providers = durable_member(list)
   queue = durable_member(list)
   voice_client = durable_member(lambda: None)
+  volume = durable_member(lambda: 0.5)
 
   def __init__(self, id, config=None):
     super().__init__(id=id, config=config or {})
@@ -54,6 +55,12 @@ class Guild(db.Entity):
   async def start_stream(self, stream_url):
     assert self.voice_client
     loop = asyncio.get_running_loop()
-    #after = lambda _: asyncio.run_coroutine_threadsafe(self.__unset_sou, loop)
     source = discord.FFmpegPCMAudio(stream_url, options='-bufsize 128k')
+    source = discord.PCMVolumeTransformer(source, self.volume)
     self.voice_client.play(source)
+
+  def set_volume(self, volume):
+    volume = max(0.0, min(1.0, float(volume)))
+    self.volume = volume
+    if self.voice_client and self.voice_client.source:
+      self.voice_client.source.volume = volume
