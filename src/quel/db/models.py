@@ -18,14 +18,15 @@ class QueuedSong(_Song):
 class Guild(db.Entity):
   id = orm.PrimaryKey(int, size=64)
   config = orm.Required(orm.Json, lazy=True)
+  volume = orm.Required(float)
   initialized = durable_member(bool)
   providers = durable_member(list)
   queue = durable_member(list)
   voice_client = durable_member(lambda: None)
-  volume = durable_member(lambda: 0.5)
+  skipflag = durable_member(bool)  # Workaround to ignore a skip from a callback
 
   def __init__(self, id, config=None):
-    super().__init__(id=id, config=config or {})
+    super().__init__(id=id, config=config or {}, volume=0.5)
 
   def init_providers(self, logger, providers, force=False):
     if self.initialized and not force:
@@ -55,7 +56,7 @@ class Guild(db.Entity):
   async def start_stream(self, stream_url, after=None):
     assert self.voice_client
     loop = asyncio.get_running_loop()
-    source = discord.FFmpegPCMAudio(stream_url, options='-bufsize 128k')
+    source = discord.FFmpegPCMAudio(stream_url, options='-bufsize 1024k')
     source = discord.PCMVolumeTransformer(source, self.volume)
     self.voice_client.play(source, after=after)
 

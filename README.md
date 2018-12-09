@@ -9,11 +9,16 @@ Quel is a simple music bot for Discord and is the successor of *discord-gmusic-b
 
 ## Installation
 
-You need to register a Discord bot and turn it into a "bot user".
+You need to register a Discord bot and turn it into a "bot user". The bot
+requires the following permissions: https://discordapi.com/permissions.html#70274048
 
 1. Clone this repository
 2. Copy the `config.json.template` to a file named `config.json` and fill in the Discord token
 3. Run `docker-compose up -d`
+
+If you disable "Embed Links" on the bot's main channel (so that Discord does
+not automatically generate embeds for pasted links), you need to give it a
+role that grants these embed permissions specifically to the bot.
 
 ## Usage
 

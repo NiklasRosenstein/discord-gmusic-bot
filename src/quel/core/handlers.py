@@ -1,45 +1,45 @@
 
-from .event import EventType, event
+from .client import MemberEventHandler, EventType, event
 
-import asyncio
 import re
 
 
-class Command:
+class Command(MemberEventHandler):
 
   def __init__(self, func, regex, preconditions=None, case_sensitive=False):
-    assert asyncio.iscoroutinefunction(func)
-    self.func = func
+    super().__init__(func)
     self.regex = re.compile(regex, 0 if case_sensitive else re.I)
     self.preconditions = preconditions or []
 
-  async def __call__(self):
+  async def handle_event(self, instance):
     if event.type == EventType.message and event.message.author != event.client.user:
       for precond in self.preconditions:
         if not precond():
           return False
       match = self.regex.match(event.text)
       if match is not None:
-        await self.func(*match.groups())
+        await self.func(instance, *match.groups())
         return True
     return False
 
 
-def command(client, *args, **kwargs):
-  def decorator(func):
-    client.add_handler(Command(func, *args, **kwargs))
-    return func
-  return decorator
+class On(MemberEventHandler):
+
+  def __init__(self, func, event_type):
+    super().__init__(func)
+    if isinstance(event_type, str):
+      event_type = getattr(EventType, event_type)
+    assert isinstance(event_type, EventType)
+    self.event_type = event_type
+
+  async def handle_event(self, instance):
+    if event.type == self.event_type:
+      result = await self.func(instance)
+      if result is None:
+        result = True
+      return result
+    return False
 
 
-def on(client, event_type):
-  if isinstance(event_type, str):
-    event_type = getattr(EventType, event_type)
-  def decorator(func):
-    assert asyncio.iscoroutinefunction(func)
-    async def handler():
-      if event.type == event_type:
-        return await func()
-    client.add_handler(handler)
-    return func
-  return decorator
+command = Command.decorate
+on = On.decorate
