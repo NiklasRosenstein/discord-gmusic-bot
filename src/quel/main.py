@@ -53,7 +53,7 @@ class GuildSongResumer:
       guild, ev = await self.queue.get()
       try:
         with set_event(ev):
-          await self.quel.resume()
+          await self.quel.resume(force=True)
       except:
         logger.exception('Exception in GuildSongResumer.run()')
 
@@ -233,10 +233,10 @@ class QuelBehavior(EventMultiplexer):
       await self.resume()
 
   @command(regex='resume')
-  async def resume(self):
+  async def resume(self, force=False):
     guild = get_guild()
     async with guild.lock:
-      if guild.voice_client and guild.voice_client.source:
+      if not force and guild.voice_client and guild.voice_client.source:
         guild.voice_client.resume()
         return
 
