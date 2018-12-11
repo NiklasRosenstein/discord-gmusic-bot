@@ -215,22 +215,21 @@ class QuelBehavior(EventMultiplexer):
               user_id=event.message.author.id,
               provider_id=provider.id,
               **song.asdict())
-            songs.append(song)
             break
         else:
           errors.append('No provider for URL `{}`'.format(url))
           continue
 
+        async with guild.lock:
+          guild.queue_song(song)
+          await event.reply('Queued **{}** - {} (by {})'.format(song.title, song.artist, event.message.author.mention))
+        if command == 'play':
+          await self.resume()
+          command = None   # Don't call resume() for the next songs
+
     if errors:
       await event.reply('\n'.join(errors))
 
-    lines = []
-    for song in songs:
-      lines.append('**{}** - {}'.format(song.title, song.artist))
-      guild.queue_song(song)
-
-    if command == 'play':
-      await self.resume()
 
   @command(regex='resume')
   async def resume(self, force=False):
