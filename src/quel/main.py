@@ -296,14 +296,23 @@ class QuelBehavior(EventMultiplexer):
     async with guild.lock:
       guild.queue = []
 
-  @command(regex='stop')
-  async def stop(self):
+  @command(regex='stop(\s*)(!+)?')
+  async def stop(self, ws='', exclam=''):
     guild = get_guild()
     async with guild.lock:
       if guild.voice_client:
         guild.voice_client.stop()
         await guild.voice_client.disconnect()
         guild.voice_client = None
+      else:
+        return
+    if len(exclam) > 0:
+      response = 'Ok'
+      if len(exclam) >= 3:
+        response += ' dude chill out!'
+      else:
+        response += ws + exclam*2
+      await event.reply(response)
 
   @command(regex='queue')
   async def queue(self):
