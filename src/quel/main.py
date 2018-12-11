@@ -72,8 +72,8 @@ class QuelBehavior(EventMultiplexer):
     self.song_resumer = GuildSongResumer(self)
 
   def check_mention(self):
-    match = re.match('^\s*<!?@(\d+)>\s*', event.text)
-    if match:
+    match = re.match('^\s*<@!?(\d+)>\s*', event.text)
+    if match and match.group(1) == str(self.client.user.id):
       event.text = event.text[match.end():]
       return True
     return False
