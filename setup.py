@@ -7,7 +7,7 @@ with open('README.md', encoding='utf8') as fp:
 
 setuptools.setup(
   name = 'quel',
-  version = '2.0.0.dev0',
+  version = '0.9.1',
   author = 'Niklas Rosenstein',
   author_email = 'rosensteinniklas@gmail.com',
   python_requires = '>=3.7',
