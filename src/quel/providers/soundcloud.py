@@ -2,7 +2,10 @@
 from . import Provider, ProviderInstance, Song
 from quel.core.utils import run_in_executor
 
+import logging
 import soundcloud
+
+logger = logging.getLogger(__name__)
 
 
 class SoundCloudProvider(Provider):
@@ -27,8 +30,9 @@ class SoundCloudInstance(ProviderInstance):
     else:
       self._client = soundcloud.Client(client_id=client_id)
 
-  async def _get(self, *args, **kwargs):
-    return await run_in_executor(None, lambda: self._client.get(*args, **kwargs))
+  async def _get(self, endpoint, *args, **kwargs):
+    logger.info('Getting endpoint {} with args: {} kwargs: {}'.format(endpoint, args, kwargs))
+    return await run_in_executor(None, lambda: self._client.get(endpoint, *args, **kwargs))
 
   def _convert_resource(self, resource: soundcloud.resource.Resource) -> 'Song':
     """
@@ -61,15 +65,12 @@ class SoundCloudInstance(ProviderInstance):
   def supports_search(self):
     return True
 
-  def match_url(self, url, urlinfo):
-    # TODO: More sophisticated checking if the URL points to a song.
-    return urlinfo.netloc == 'soundcloud.com', None
-
   async def search(self, term, max_results):
     songs_yielded = 0
     offset = 0
     while songs_yielded < max_results:
-      for resource in await self._get('/tracks', q=term, limit=max_results, offset=offset):
+      data = await self._get('/tracks', q=term, limit=max_results, offset=offset)
+      for resource in data:
         try:
           yield self._convert_resource(resource)
           songs_yielded += 1
@@ -77,7 +78,13 @@ class SoundCloudInstance(ProviderInstance):
           pass
         if songs_yielded == max_results:
           break
+      if len(data) < max_results:
+        break
       offset += max_results
+
+  def match_url(self, url, urlinfo):
+    # TODO: More sophisticated checking if the URL points to a song.
+    return urlinfo.netloc == 'soundcloud.com', None
 
   async def resolve_url(self, url, match_data):
     info = await self._get('/resolve', url=url)

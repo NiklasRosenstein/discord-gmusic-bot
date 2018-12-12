@@ -30,7 +30,7 @@ class ProviderInstance:
   def name(self):
     return self.provider.name
 
-  def supports_searching(self):
+  def supports_search(self):
     return False
 
   async def search(self, term, max_results):

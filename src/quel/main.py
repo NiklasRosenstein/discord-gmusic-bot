@@ -6,6 +6,7 @@ from quel.db.utils import create_or_update
 from quel.core.client import Client, EventMultiplexer, EventType, event, get_event, set_event, propagate_event
 from quel.core.handlers import on, command
 from quel.core.reloader import Reloader
+from quel.providers import ResolveError
 from quel.providers.rawfile import RawFileProvider
 from quel.providers.soundcloud import SoundCloudProvider
 from quel.providers.youtube_dl import YoutubeDlProvider
@@ -183,10 +184,13 @@ class QuelBehavior(EventMultiplexer):
         return
       search_providers = [instance]
     else:
-      search_providers = [x for x in guild.providers if not x.error]
+      search_providers = [x for x in guild.providers if not x.error and x.supports_search()]
       if not search_providers:
         await event.reply('No providers available.')
         return
+
+    provider_names = ['**{}**'.format(x.name) for x in search_providers]
+    await event.reply('Searching "{}" in {}'.format(term, ', '.join(provider_names)))
 
     embed = discord.Embed(title='Results for "{}"'.format(term))
     for provider in search_providers:
@@ -207,10 +211,15 @@ class QuelBehavior(EventMultiplexer):
       if not urlinfo.netloc or not urlinfo.scheme:
         errors.append('Invalid URL `{}`'.format(url))
       else:
+        song = None
         for provider in guild.providers:
           matches, match_data = provider.match_url(url, urlinfo)
           if not provider.error and matches:
-            song = await provider.resolve_url(url, match_data)
+            try:
+              song = await provider.resolve_url(url, match_data)
+            except ResolveError as exc:
+              errors.append('`{}`: {}'.format(url, exc))
+              break
             song = db.QueuedSong(
               user_id=event.message.author.id,
               provider_id=provider.id,
@@ -219,7 +228,8 @@ class QuelBehavior(EventMultiplexer):
         else:
           errors.append('No provider for URL `{}`'.format(url))
           continue
-
+        if not song:
+          continue
         async with guild.lock:
           guild.queue_song(song)
           await event.reply('Queued **{}** - {} (by {})'.format(song.title, song.artist, event.message.author.mention))
@@ -296,7 +306,10 @@ class QuelBehavior(EventMultiplexer):
       guild.queue = []
 
   @command(regex='stop(\s*)(!+)?')
-  async def stop(self, ws='', exclam=''):
+  async def stop(self, ws=None, exclam=None):
+    ws = ws or ''
+    exclam = exclam or ''
+
     guild = get_guild()
     async with guild.lock:
       if guild.voice_client:
