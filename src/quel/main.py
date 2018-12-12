@@ -18,6 +18,7 @@ import discord
 import logging
 import json
 import os
+import random
 import re
 import sys
 
@@ -67,6 +68,17 @@ class QuelBehavior(EventMultiplexer):
 
   nickname = '♪♪ Quel ♪♪'
 
+  # Thanks to https://textfac.es/
+  welcome_smileys = [
+    '(▀̿Ĺ̯▀̿ ̿)',
+    '(づ｡◕‿‿◕｡)づ',
+    '~(˘▾˘~)',
+    'ヾ(⌐■_■)ノ♪',
+    'ლ(´ڡ`ლ)',
+    'ƪ(˘⌣˘)ʃ',
+    '〆(・∀・＠)',
+  ]
+
   def __init__(self, config):
     super().__init__()
     self.config = config
@@ -79,16 +91,16 @@ class QuelBehavior(EventMultiplexer):
       return True
     return False
 
-  def check_channel(self):
-    if isinstance(event.message.channel, discord.TextChannel):
-      return 'quel' in event.message.channel.topic.lower()
+  def check_channel(self, channel):
+    if isinstance(channel, discord.TextChannel) and channel.topic:
+      return 'quel' in channel.topic.lower()
     return False
 
   async def handle_event(self):
     if event.type == EventType.message:
       if event.message.author == self.client.user:
         return False
-      if not (self.check_mention() or self.check_channel()):
+      if not (self.check_mention() or self.check_channel(event.message.channel)):
         return False
     return await super().handle_event()
 
@@ -108,6 +120,13 @@ class QuelBehavior(EventMultiplexer):
     for guild in self.client.guilds:
       await self.update_nick(guild)
       await self.provider_reload(guild)
+
+      # Say hello in Quel's main channel.
+      for channel in guild.channels:
+        if self.check_channel(channel):
+          await channel.send("I'm b{}ck! {}".format('a' * random.randint(1, 15), random.choice(self.welcome_smileys)))
+          break
+
     self.song_resumer.start()
 
   @on('guild_join')
@@ -239,7 +258,6 @@ class QuelBehavior(EventMultiplexer):
 
     if errors:
       await event.reply('\n'.join(errors))
-
 
   @command(regex='resume')
   async def resume(self, force=False):
